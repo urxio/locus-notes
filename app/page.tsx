@@ -716,12 +716,12 @@ function BlockItem({ block, index, numBlocks, isFocused, onUpdate, onInsert, onD
     return <hr className="border-border my-3" />
   }
 
-  // Date block — clickable chip that opens the native date picker
+  // Date block — click the date text to open the native date picker
   if (block.type === 'date') {
     const dateVal = block.content || new Date().toISOString().split('T')[0]
     const displayDate = (() => {
       try {
-        // Append T12:00:00 to avoid timezone-shift issues when parsing date-only strings
+        // T12:00:00 prevents timezone-shift issues with date-only strings
         return new Date(dateVal + 'T12:00:00').toLocaleDateString('en-US', {
           weekday: 'long', month: 'long', day: 'numeric', year: 'numeric',
         })
@@ -730,18 +730,23 @@ function BlockItem({ block, index, numBlocks, isFocused, onUpdate, onInsert, onD
     return (
       <div className="flex items-center gap-2 py-1.5 group select-none">
         <Calendar className="w-4 h-4 text-primary/70 flex-shrink-0" />
-        {/* Wrapping <label> makes the whole row open the hidden <input type="date"> */}
-        <label className="flex items-center gap-1.5 cursor-pointer">
-          <span className="text-sm font-medium text-primary/80 group-hover:underline decoration-dotted underline-offset-2">
+        {/* The input is overlaid on the text with opacity-0 so clicking the
+            label text reliably opens the native date picker on all browsers */}
+        <div className="relative inline-flex items-center">
+          <span className="text-sm font-medium text-primary/80 group-hover:underline decoration-dotted underline-offset-2 pointer-events-none">
             {displayDate}
           </span>
           <input
             type="date"
             value={dateVal}
             onChange={e => onUpdate(block.id, { content: e.target.value })}
-            className="sr-only"
+            className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+            title="Click to change date"
           />
-        </label>
+        </div>
+        <span className="text-xs text-muted-foreground/40 opacity-0 group-hover:opacity-100 transition-opacity">
+          click to edit
+        </span>
       </div>
     )
   }
