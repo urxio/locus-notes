@@ -1280,6 +1280,31 @@ function NoteEditor({ note, allTags, onChange, onDelete }: {
     // Same block — leave browser's native text selection intact
     if (!startId || !endId || startId === endId) return
 
+    // compute offsets within each block
+    function offsetIn(el: HTMLElement, node: Node, off: number) {
+      try {
+        const r = document.createRange()
+        r.setStart(el, 0)
+        r.setEnd(node, off)
+        return r.toString().length
+      } catch {
+        return -1
+      }
+    }
+    const startOffset = offsetIn(startEl, range.startContainer, range.startOffset)
+    const endOffset   = offsetIn(endEl, range.endContainer, range.endOffset)
+    const startText = startEl.textContent || ''
+    const endText   = endEl.textContent   || ''
+
+    // Only convert to block selection if the drag covered whole blocks from
+    // boundary to boundary. Otherwise keep the native text selection (allows
+    // partial text across adjacent blocks).
+    const fullForward = startOffset === 0 && endOffset === endText.length
+    const fullBackward = startOffset === startText.length && endOffset === 0
+    if (!(fullForward || fullBackward)) {
+      return
+    }
+
     const blocks = noteBlocksRef.current
     const si = blocks.findIndex(b => b.id === startId)
     const ei = blocks.findIndex(b => b.id === endId)
