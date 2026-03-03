@@ -11,7 +11,7 @@ import {
   Plus, Search, Hash, Network, FileText, Trash2, Tag, X,
   AlignLeft, Heading1, Heading2, Heading3, List, ListOrdered,
   Code2, Quote, CheckSquare, Minus, PanelLeftClose, PanelLeftOpen,
-  ChevronRight, BookOpen, MoreHorizontal, Calendar,
+  ChevronRight, BookOpen, MoreHorizontal, Calendar, GripVertical, Copy,
 } from "lucide-react"
 import { ThemeSwitcher } from "@/components/theme-switcher"
 
@@ -643,15 +643,19 @@ function DateBlock({ block, onUpdate }: { block: Block; onUpdate: (id: string, p
 
 interface BlockItemProps {
   block: Block; index: number; numBlocks: number; isFocused: boolean
+  isSelected: boolean
   onUpdate: (id: string, patch: Partial<Block>) => void
   onInsert: (afterId: string, type?: BlockType, content?: string) => void
   onDelete: (id: string) => void
+  onDuplicate: (id: string) => void
   onFocus: (id: string) => void
+  onSelect: (id: string, evt: React.MouseEvent) => void
   onPasteLines: (afterId: string, lines: string[]) => void
 }
 
-function BlockItem({ block, index, numBlocks, isFocused, onUpdate, onInsert, onDelete, onFocus, onPasteLines }: BlockItemProps) {
+function BlockItem({ block, index, numBlocks, isFocused, isSelected, onUpdate, onInsert, onDelete, onDuplicate, onFocus, onSelect, onPasteLines }: BlockItemProps) {
   const ref = useRef<HTMLDivElement>(null)
+  const containerRef = useRef<HTMLDivElement>(null)
   const [showMenu, setShowMenu] = useState(false)
   const [menuFilter, setMenuFilter] = useState('')
   const [menuIdx, setMenuIdx] = useState(0)
@@ -837,11 +841,14 @@ function BlockItem({ block, index, numBlocks, isFocused, onUpdate, onInsert, onD
     if (e.key === 'Backspace') {
       if (!text) {
         e.preventDefault()
-        if (block.type !== 'p') {
+        // Allow deletion of all block types when empty
+        if (block.type === 'p') {
+          if (numBlocks > 1) onDelete(block.id)
+        } else {
+          // Convert non-paragraph blocks to paragraph instead of deleting
+          // This matches Notion's behavior
           onUpdate(block.id, { type: 'p', content: '' })
-          return
         }
-        if (numBlocks > 1) onDelete(block.id)
         return
       }
     }
@@ -860,18 +867,89 @@ function BlockItem({ block, index, numBlocks, isFocused, onUpdate, onInsert, onD
     setMenuFilter('')
   }
 
-  // Divider
-  if (block.type === 'divider') {
-    return <hr className="border-border my-3" />
+  function handleBlockDelete() {
+    onDelete(block.id)
   }
 
-  // Date block
+  function handleContainerClick(e: React.MouseEvent) {
+    // Only trigger selection on the drag handle or with Cmd/Ctrl
+    if ((e.metaKey || e.ctrlKey) && e.target === containerRef.current) {
+      e.preventDefault()
+      onSelect(block.id, e)
+    }
+  }
+
+  function handleDragHandleClick(e: React.MouseEvent) {
+    e.stopPropagation()
+    onSelect(block.id, e)
+  }
+
+  // Divider block - wrapped in container for consistency
+  if (block.type === 'divider') {
+    return (
+      <div
+        ref={containerRef}
+        className={cn(
+          "relative group -mx-7 px-7 py-2 transition-all rounded-sm",
+          isSelected && "bg-primary/10"
+        )}
+        onClick={handleContainerClick}
+      >
+        <div className="flex items-center gap-2">
+          <div
+            className="w-6 h-6 rounded cursor-grab active:cursor-grabbing flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground/40 hover:text-muted-foreground/70"
+            onClick={handleDragHandleClick}
+            title="Drag to move or click to select"
+          >
+            <GripVertical className="w-4 h-4" />
+          </div>
+          <hr className="border-border flex-1" />
+          <button
+            className="h-6 w-6 rounded flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground/40 hover:text-destructive"
+            onClick={(e) => { e.stopPropagation(); handleBlockDelete() }}
+            title="Delete block"
+          >
+            <Trash2 className="w-3.5 h-3.5" />
+          </button>
+        </div>
+      </div>
+    )
+  }
+
+  // Date block - wrapped in container for consistency
   if (block.type === 'date') {
-    return <DateBlock block={block} onUpdate={onUpdate} />
+    return (
+      <div
+        ref={containerRef}
+        className={cn(
+          "relative group -mx-7 px-7 py-2 transition-all rounded-sm",
+          isSelected && "bg-primary/10"
+        )}
+        onClick={handleContainerClick}
+      >
+        <div className="flex items-center gap-2">
+          <div
+            className="w-6 h-6 rounded cursor-grab active:cursor-grabbing flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground/40 hover:text-muted-foreground/70"
+            onClick={handleDragHandleClick}
+            title="Drag to move or click to select"
+          >
+            <GripVertical className="w-4 h-4" />
+          </div>
+          <DateBlock block={block} onUpdate={onUpdate} />
+          <button
+            className="h-6 w-6 rounded flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground/40 hover:text-destructive ml-auto"
+            onClick={(e) => { e.stopPropagation(); handleBlockDelete() }}
+            title="Delete block"
+          >
+            <Trash2 className="w-3.5 h-3.5" />
+          </button>
+        </div>
+      </div>
+    )
   }
 
   const baseEditable = cn(
-    "outline-none min-h-[1.4em] break-words",
+    "outline-none min-h-[1.4em] break-words flex-1",
     // Only show placeholder on the focused block to avoid repeating hints
     isFocused && "empty:before:content-[attr(data-placeholder)] empty:before:text-muted-foreground/50",
   )
@@ -903,44 +981,67 @@ function BlockItem({ block, index, numBlocks, isFocused, onUpdate, onInsert, onD
     />
   )
 
+  // Unified block container with selection support
   return (
-    <div className="relative group">
-      {/* Block type label on hover */}
-      <div className="absolute -left-7 top-0.5 opacity-0 group-hover:opacity-100 transition-opacity flex items-center">
-        <div className="text-muted-foreground/30 hover:text-muted-foreground cursor-pointer"
-          title={BLOCK_LABELS[block.type]}>
-          {BLOCK_ICONS[block.type]}
+    <div
+      ref={containerRef}
+      className={cn(
+        "relative group -mx-7 px-7 py-1 transition-all rounded-sm",
+        isSelected && "bg-primary/10 ring-1 ring-primary/20"
+      )}
+      onClick={handleContainerClick}
+    >
+      <div className="flex items-start gap-2">
+        {/* Drag handle */}
+        <div
+          className="w-6 h-6 rounded cursor-grab active:cursor-grabbing flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground/40 hover:text-muted-foreground/70 flex-shrink-0 mt-1"
+          onClick={handleDragHandleClick}
+          title="Drag to move or click to select"
+        >
+          <GripVertical className="w-4 h-4" />
         </div>
-      </div>
 
-      {block.type === 'bullet' ? (
-        <div className="flex items-start gap-2.5">
-          <span className="mt-1.5 text-muted-foreground/60 text-sm leading-none select-none">•</span>
-          {editableEl}
-        </div>
-      ) : block.type === 'numbered' ? (
-        <div className="flex items-start gap-2.5">
-          <span className="mt-0.5 text-muted-foreground/60 text-sm tabular-nums select-none min-w-[1.2em]">{index + 1}.</span>
-          {editableEl}
-        </div>
-      ) : block.type === 'todo' ? (
-        <div className="flex items-start gap-2.5">
-          <input type="checkbox" checked={block.checked ?? false}
-            onChange={() => onUpdate(block.id, { checked: !block.checked })}
-            className="mt-1 rounded cursor-pointer accent-primary"
-          />
-          <div ref={ref} contentEditable suppressContentEditableWarning
-            data-placeholder="To-do"
-            className={cn(baseEditable, 'text-base leading-relaxed flex-1', block.checked && 'line-through text-muted-foreground/60')}
-            onKeyDown={handleKeyDown} onInput={handleInput} onPaste={handlePaste} onFocus={() => onFocus(block.id)}
-            style={{ wordBreak: 'break-word', whiteSpace: 'pre-wrap' }}
-          />
-        </div>
-      ) : editableEl}
+        {/* Content */}
+        {block.type === 'bullet' ? (
+          <div className="flex items-start gap-2.5 flex-1">
+            <span className="mt-1.5 text-muted-foreground/60 text-sm leading-none select-none">•</span>
+            {editableEl}
+          </div>
+        ) : block.type === 'numbered' ? (
+          <div className="flex items-start gap-2.5 flex-1">
+            <span className="mt-0.5 text-muted-foreground/60 text-sm tabular-nums select-none min-w-[1.2em]">{index + 1}.</span>
+            {editableEl}
+          </div>
+        ) : block.type === 'todo' ? (
+          <div className="flex items-start gap-2.5 flex-1">
+            <input type="checkbox" checked={block.checked ?? false}
+              onChange={() => onUpdate(block.id, { checked: !block.checked })}
+              className="mt-1 rounded cursor-pointer accent-primary flex-shrink-0"
+            />
+            <div ref={ref} contentEditable suppressContentEditableWarning
+              data-placeholder="To-do"
+              className={cn(baseEditable, 'text-base leading-relaxed', block.checked && 'line-through text-muted-foreground/60')}
+              onKeyDown={handleKeyDown} onInput={handleInput} onPaste={handlePaste} onFocus={() => onFocus(block.id)}
+              style={{ wordBreak: 'break-word', whiteSpace: 'pre-wrap' }}
+            />
+          </div>
+        ) : (
+          editableEl
+        )}
+
+        {/* Delete button */}
+        <button
+          className="h-6 w-6 rounded flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground/40 hover:text-destructive flex-shrink-0 mt-1"
+          onClick={(e) => { e.stopPropagation(); handleBlockDelete() }}
+          title="Delete block (or press Backspace when empty)"
+        >
+          <Trash2 className="w-3.5 h-3.5" />
+        </button>
+      </div>
 
       {/* Slash command menu */}
       {showMenu && filteredMenu.length > 0 && (
-        <div className="absolute left-0 top-full z-50 mt-1 w-56 rounded-lg border bg-popover shadow-lg overflow-hidden">
+        <div className="absolute left-12 top-full z-50 mt-1 w-56 rounded-lg border bg-popover shadow-lg overflow-hidden">
           <div className="px-2 py-1.5 text-[10px] text-muted-foreground font-medium tracking-wider border-b">BLOCKS</div>
           <div className="py-1 max-h-52 overflow-y-auto">
             {filteredMenu.map((item, i) => (
@@ -982,6 +1083,8 @@ function NoteEditor({ note, allTags, onChange, onDelete }: {
   note: Note; allTags: string[]; onChange: (patch: Partial<Note>) => void; onDelete: () => void
 }) {
   const [focusedBlockId, setFocusedBlockId] = useState<string | null>(null)
+  const [selectedBlockIds, setSelectedBlockIds] = useState<Set<string>>(new Set())
+  const [lastSelectedIdx, setLastSelectedIdx] = useState<number | null>(null)
   const [tagInput, setTagInput] = useState('')
   const [tagSuggestions, setTagSuggestions] = useState<string[]>([])
   const [showEmojiPicker, setShowEmojiPicker] = useState(false)
@@ -991,6 +1094,59 @@ function NoteEditor({ note, allTags, onChange, onDelete }: {
     onChange({
       blocks: note.blocks.map(b => b.id === id ? { ...b, ...patch } : b),
     })
+  }
+
+  function selectBlock(blockId: string, evt: React.MouseEvent) {
+    const idx = note.blocks.findIndex(b => b.id === blockId)
+    if (idx === -1) return
+
+    if (evt.shiftKey && lastSelectedIdx !== null) {
+      // Range select
+      const [start, end] = idx < lastSelectedIdx ? [idx, lastSelectedIdx] : [lastSelectedIdx, idx]
+      const ids = new Set<string>()
+      for (let i = start; i <= end; i++) {
+        ids.add(note.blocks[i].id)
+      }
+      setSelectedBlockIds(ids)
+      setLastSelectedIdx(idx)
+    } else if (evt.metaKey || evt.ctrlKey) {
+      // Add/remove from selection
+      const newSelection = new Set(selectedBlockIds)
+      if (newSelection.has(blockId)) {
+        newSelection.delete(blockId)
+      } else {
+        newSelection.add(blockId)
+      }
+      setSelectedBlockIds(newSelection)
+      setLastSelectedIdx(idx)
+    } else {
+      // Single select
+      setSelectedBlockIds(new Set([blockId]))
+      setLastSelectedIdx(idx)
+    }
+  }
+
+  function deleteBlock(id: string) {
+    const idx = note.blocks.findIndex(b => b.id === id)
+    const prev = note.blocks[idx - 1]
+    onChange({ blocks: note.blocks.filter(b => b.id !== id) })
+    if (prev) setFocusedBlockId(prev.id)
+    // Clear selection
+    selectedBlockIds.delete(id)
+    setSelectedBlockIds(new Set(selectedBlockIds))
+  }
+
+  function deleteSelectedBlocks() {
+    if (selectedBlockIds.size === 0) return
+    const newBlocks = note.blocks.filter(b => !selectedBlockIds.has(b.id))
+    if (newBlocks.length === 0) {
+      // Don't allow deleting all blocks, keep one empty paragraph
+      onChange({ blocks: [mkBlock('p')] })
+    } else {
+      onChange({ blocks: newBlocks })
+    }
+    setSelectedBlockIds(new Set())
+    setLastSelectedIdx(null)
   }
 
   function insertPastedLines(afterId: string, lines: string[]) {
@@ -1012,13 +1168,6 @@ function NoteEditor({ note, allTags, onChange, onDelete }: {
     const newBlocks = [...note.blocks.slice(0, idx + 1), nb, ...note.blocks.slice(idx + 1)]
     onChange({ blocks: newBlocks })
     setFocusedBlockId(nb.id)
-  }
-
-  function deleteBlock(id: string) {
-    const idx = note.blocks.findIndex(b => b.id === id)
-    const prev = note.blocks[idx - 1]
-    onChange({ blocks: note.blocks.filter(b => b.id !== id) })
-    if (prev) setFocusedBlockId(prev.id)
   }
 
   function addTag(tag: string) {
@@ -1053,6 +1202,23 @@ function NoteEditor({ note, allTags, onChange, onDelete }: {
     }
   }
 
+  // Global keyboard shortcuts
+  useEffect(() => {
+    function handleKeyDown(e: KeyboardEvent) {
+      // Cmd/Ctrl + Backspace to delete selected blocks
+      if ((e.metaKey || e.ctrlKey) && e.key === 'Backspace' && selectedBlockIds.size > 0) {
+        e.preventDefault()
+        deleteSelectedBlocks()
+      }
+      // Escape to clear selection
+      if (e.key === 'Escape' && selectedBlockIds.size > 0) {
+        setSelectedBlockIds(new Set())
+      }
+    }
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [selectedBlockIds])
+
   return (
     <div className="flex flex-col h-full overflow-hidden">
       {/* Header bar */}
@@ -1062,8 +1228,25 @@ function NoteEditor({ note, allTags, onChange, onDelete }: {
           <span>Notes</span>
           <ChevronRight className="w-3 h-3" />
           <span className="text-foreground font-medium truncate max-w-[200px]">{note.title || 'Untitled'}</span>
+          {selectedBlockIds.size > 0 && (
+            <>
+              <ChevronRight className="w-3 h-3" />
+              <Badge variant="secondary" className="ml-2">{selectedBlockIds.size} block{selectedBlockIds.size !== 1 ? 's' : ''} selected</Badge>
+            </>
+          )}
         </div>
         <div className="flex items-center gap-1">
+          {selectedBlockIds.size > 0 && (
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground hover:text-destructive"
+                  onClick={() => { deleteSelectedBlocks() }}>
+                  <Trash2 className="w-3.5 h-3.5" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>Delete selected ({note.blocks.filter(b => selectedBlockIds.has(b.id)).length} blocks)</TooltipContent>
+            </Tooltip>
+          )}
           <Tooltip>
             <TooltipTrigger asChild>
               <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground hover:text-destructive"
@@ -1115,7 +1298,7 @@ function NoteEditor({ note, allTags, onChange, onDelete }: {
           </div>
 
           {/* Blocks */}
-          <div className="space-y-1 pl-7">
+          <div className="space-y-0">
             {note.blocks.map((block, index) => (
               <BlockItem
                 key={block.id}
@@ -1123,10 +1306,12 @@ function NoteEditor({ note, allTags, onChange, onDelete }: {
                 index={index}
                 numBlocks={note.blocks.length}
                 isFocused={focusedBlockId === block.id}
+                isSelected={selectedBlockIds.has(block.id)}
                 onUpdate={updateBlock}
                 onInsert={insertBlockAfter}
                 onDelete={deleteBlock}
                 onFocus={setFocusedBlockId}
+                onSelect={selectBlock}
                 onPasteLines={insertPastedLines}
               />
             ))}
