@@ -715,7 +715,8 @@ function BlockItem({ block, index, numBlocks, isFocused, onUpdate, onInsert, onD
 
   const baseEditable = cn(
     "outline-none min-h-[1.4em] break-words",
-    "empty:before:content-[attr(data-placeholder)] empty:before:text-muted-foreground/50",
+    // Only show placeholder on the focused block to avoid repeating hints
+    isFocused && "empty:before:content-[attr(data-placeholder)] empty:before:text-muted-foreground/50",
   )
   const typeClass: Record<BlockType, string> = {
     h1: 'text-3xl font-bold tracking-tight',
@@ -803,6 +804,19 @@ function BlockItem({ block, index, numBlocks, isFocused, onUpdate, onInsert, onD
       )}
     </div>
   )
+}
+
+// ─── Helpers ──────────────────────────────────────────────────────────────────
+
+function formatDate(ts: number): string {
+  const d = new Date(ts)
+  const now = new Date()
+  const diffMs = now.getTime() - d.getTime()
+  const diffDays = Math.floor(diffMs / 86400000)
+  if (diffDays === 0) return 'Today'
+  if (diffDays === 1) return 'Yesterday'
+  if (diffDays < 7) return `${diffDays} days ago`
+  return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: d.getFullYear() !== now.getFullYear() ? 'numeric' : undefined })
 }
 
 // ─── NoteEditor ───────────────────────────────────────────────────────────────
@@ -935,6 +949,12 @@ function NoteEditor({ note, allTags, onChange, onDelete }: {
               placeholder="Untitled"
               className="w-full text-4xl font-bold tracking-tight bg-transparent outline-none placeholder:text-muted-foreground/40 border-none"
             />
+            {/* Created / edited dates */}
+            <div className="flex items-center gap-3 text-xs text-muted-foreground/55 select-none -mt-1">
+              <span>Created {formatDate(note.createdAt)}</span>
+              <span>·</span>
+              <span>Edited {formatDate(note.updatedAt)}</span>
+            </div>
           </div>
 
           {/* Blocks */}
