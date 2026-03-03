@@ -872,9 +872,11 @@ function BlockItem({ block, index, numBlocks, isFocused, isSelected, onUpdate, o
   }
 
   function handleContainerClick(e: React.MouseEvent) {
-    // Only trigger selection on the drag handle or with Cmd/Ctrl
-    if ((e.metaKey || e.ctrlKey) && e.target === containerRef.current) {
+    // Allow selection with Cmd/Ctrl+Click anywhere, or click on drag handle
+    const isDragHandle = (e.target as HTMLElement)?.closest('[data-drag-handle]')
+    if (isDragHandle || e.metaKey || e.ctrlKey) {
       e.preventDefault()
+      e.stopPropagation()
       onSelect(block.id, e)
     }
   }
@@ -891,15 +893,16 @@ function BlockItem({ block, index, numBlocks, isFocused, isSelected, onUpdate, o
         ref={containerRef}
         className={cn(
           "relative group -mx-7 px-7 py-2 transition-all rounded-sm",
-          isSelected && "bg-primary/10"
+          isSelected && "bg-primary/10 ring-1 ring-primary/20"
         )}
         onClick={handleContainerClick}
       >
         <div className="flex items-center gap-2">
           <div
+            data-drag-handle
             className="w-6 h-6 rounded cursor-grab active:cursor-grabbing flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground/40 hover:text-muted-foreground/70"
             onClick={handleDragHandleClick}
-            title="Drag to move or click to select"
+            title="Click to select"
           >
             <GripVertical className="w-4 h-4" />
           </div>
@@ -923,15 +926,16 @@ function BlockItem({ block, index, numBlocks, isFocused, isSelected, onUpdate, o
         ref={containerRef}
         className={cn(
           "relative group -mx-7 px-7 py-2 transition-all rounded-sm",
-          isSelected && "bg-primary/10"
+          isSelected && "bg-primary/10 ring-1 ring-primary/20"
         )}
         onClick={handleContainerClick}
       >
         <div className="flex items-center gap-2">
           <div
+            data-drag-handle
             className="w-6 h-6 rounded cursor-grab active:cursor-grabbing flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground/40 hover:text-muted-foreground/70"
             onClick={handleDragHandleClick}
-            title="Drag to move or click to select"
+            title="Click to select"
           >
             <GripVertical className="w-4 h-4" />
           </div>
@@ -994,9 +998,10 @@ function BlockItem({ block, index, numBlocks, isFocused, isSelected, onUpdate, o
       <div className="flex items-start gap-2">
         {/* Drag handle */}
         <div
+          data-drag-handle
           className="w-6 h-6 rounded cursor-grab active:cursor-grabbing flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground/40 hover:text-muted-foreground/70 flex-shrink-0 mt-1"
           onClick={handleDragHandleClick}
-          title="Drag to move or click to select"
+          title="Drag to move or click to select (Cmd+Click to multi-select)"
         >
           <GripVertical className="w-4 h-4" />
         </div>
@@ -1202,22 +1207,40 @@ function NoteEditor({ note, allTags, onChange, onDelete }: {
     }
   }
 
-  // Global keyboard shortcuts
+  // Global keyboard shortcuts - using refs to avoid closure issues
+  const selectedIdsRef = useRef(selectedBlockIds)
+  const deleteSelectedBlocksRef = useRef(deleteSelectedBlocks)
+
+  useEffect(() => {
+    selectedIdsRef.current = selectedBlockIds
+  }, [selectedBlockIds])
+
+  useEffect(() => {
+    deleteSelectedBlocksRef.current = deleteSelectedBlocks
+  }, [note.blocks])
+
   useEffect(() => {
     function handleKeyDown(e: KeyboardEvent) {
-      // Cmd/Ctrl + Backspace to delete selected blocks
-      if ((e.metaKey || e.ctrlKey) && e.key === 'Backspace' && selectedBlockIds.size > 0) {
+      // Only handle shortcuts if no contentEditable is focused
+      const activeEl = document.activeElement as HTMLElement
+      const isContentEditable = activeEl?.contentEditable === 'true' || activeEl?.closest('[contenteditable]')
+
+      // Cmd/Ctrl + Backspace to delete selected blocks (even if editing)
+      if ((e.metaKey || e.ctrlKey) && e.key === 'Backspace' && selectedIdsRef.current.size > 0) {
         e.preventDefault()
-        deleteSelectedBlocks()
+        deleteSelectedBlocksRef.current()
       }
-      // Escape to clear selection
-      if (e.key === 'Escape' && selectedBlockIds.size > 0) {
+
+      // Escape to clear selection (only if not editing)
+      if (e.key === 'Escape' && selectedIdsRef.current.size > 0 && !isContentEditable) {
+        e.preventDefault()
         setSelectedBlockIds(new Set())
       }
     }
-    window.addEventListener('keydown', handleKeyDown)
-    return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [selectedBlockIds])
+
+    window.addEventListener('keydown', handleKeyDown, true) // Use capture phase
+    return () => window.removeEventListener('keydown', handleKeyDown, true)
+  }, [])
 
   return (
     <div className="flex flex-col h-full overflow-hidden">
@@ -1230,26 +1253,35 @@ function NoteEditor({ note, allTags, onChange, onDelete }: {
           <span className="text-foreground font-medium truncate max-w-[200px]">{note.title || 'Untitled'}</span>
           {selectedBlockIds.size > 0 && (
             <>
-              <ChevronRight className="w-3 h-3" />
-              <Badge variant="secondary" className="ml-2">{selectedBlockIds.size} block{selectedBlockIds.size !== 1 ? 's' : ''} selected</Badge>
+              <ChevronRight className="w-3 h-3 text-muted-foreground/40" />
+              <Badge variant="secondary" className="gap-1.5">
+                <span>{selectedBlockIds.size} selected</span>
+              </Badge>
             </>
           )}
         </div>
-        <div className="flex items-center gap-1">
+        <div className="flex items-center gap-2">
           {selectedBlockIds.size > 0 && (
             <Tooltip>
               <TooltipTrigger asChild>
-                <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground hover:text-destructive"
-                  onClick={() => { deleteSelectedBlocks() }}>
+                <Button 
+                  variant="destructive" 
+                  size="sm"
+                  className="h-8 gap-2"
+                  onClick={() => { 
+                    setFocusedBlockId(null)
+                    deleteSelectedBlocks() 
+                  }}>
                   <Trash2 className="w-3.5 h-3.5" />
+                  Delete {selectedBlockIds.size > 1 ? selectedBlockIds.size + ' blocks' : 'block'}
                 </Button>
               </TooltipTrigger>
-              <TooltipContent>Delete selected ({note.blocks.filter(b => selectedBlockIds.has(b.id)).length} blocks)</TooltipContent>
+              <TooltipContent>Or press Cmd+Backspace</TooltipContent>
             </Tooltip>
           )}
           <Tooltip>
             <TooltipTrigger asChild>
-              <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground hover:text-destructive"
+              <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-destructive"
                 onClick={onDelete}>
                 <Trash2 className="w-3.5 h-3.5" />
               </Button>
