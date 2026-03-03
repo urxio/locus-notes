@@ -1346,6 +1346,12 @@ function NoteEditor({ note, allTags, onChange, onDelete }: {
         else                                   newBlocks.push(blocks[i])
       }
 
+      // Synchronously update the start-block's DOM before React re-renders.
+      // The BlockItem content-sync effect only fires on type changes (by design,
+      // to prevent cursor jumps during typing), so we must patch the DOM here —
+      // otherwise the contenteditable still shows the old text after deletion.
+      if (fromEditable) fromEditable.textContent = mergedContent
+
       // Clear the browser selection before updating React state
       sel.removeAllRanges()
 
