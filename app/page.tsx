@@ -650,10 +650,12 @@ interface BlockItemProps {
   onDuplicate?: (id: string) => void
   onFocus: (id: string) => void
   onSelect: (id: string, evt: React.MouseEvent) => void
+  onDragSelectStart: (id: string, idx: number) => void
+  onMouseEnterBlock: (idx: number) => void
   onPasteLines: (afterId: string, lines: string[]) => void
 }
 
-function BlockItem({ block, index, numBlocks, isFocused, isSelected, onUpdate, onInsert, onDelete, onDuplicate, onFocus, onSelect, onPasteLines }: BlockItemProps) {
+function BlockItem({ block, index, numBlocks, isFocused, isSelected, onUpdate, onInsert, onDelete, onDuplicate, onFocus, onSelect, onDragSelectStart, onMouseEnterBlock, onPasteLines }: BlockItemProps) {
   const ref = useRef<HTMLDivElement>(null)
   const containerRef = useRef<HTMLDivElement>(null)
   const [showMenu, setShowMenu] = useState(false)
@@ -870,34 +872,47 @@ function BlockItem({ block, index, numBlocks, isFocused, isSelected, onUpdate, o
     onDelete(block.id)
   }
 
+  // For non-editable blocks (date / divider): any click selects them.
   function handleContainerClick(e: React.MouseEvent) {
-    const isDragHandle = (e.target as HTMLElement)?.closest('[data-drag-handle]')
-    // Non-editable blocks: any click selects them.
-    // Delete buttons call e.stopPropagation() so they won't trigger this.
     if (block.type === 'divider' || block.type === 'date') {
       e.preventDefault()
       onSelect(block.id, e)
-      return
-    }
-    // Editable blocks: drag handle or Cmd/Ctrl+Click
-    if (isDragHandle || e.metaKey || e.ctrlKey) {
-      const activeEl = document.activeElement as HTMLElement
-      if (activeEl?.contentEditable === 'true') activeEl.blur()
-      e.preventDefault()
-      e.stopPropagation()
-      onSelect(block.id, e)
     }
   }
 
-  function handleDragHandleClick(e: React.MouseEvent) {
+  // Grip / left-margin mousedown → start (or extend with Shift/Cmd) block selection.
+  // Using mousedown (not click) so dragging across blocks works immediately.
+  function handleGripMouseDown(e: React.MouseEvent) {
+    e.preventDefault()   // prevent browser text-selection during drag
     e.stopPropagation()
-    // Blur any focused text so Delete/Backspace immediately deletes selected blocks
     const activeEl = document.activeElement as HTMLElement
     if (activeEl?.contentEditable === 'true') activeEl.blur()
-    onSelect(block.id, e)
+
+    if (e.shiftKey || e.metaKey || e.ctrlKey) {
+      // Shift → range select, Cmd/Ctrl → toggle — both via onSelect
+      onSelect(block.id, e)
+    } else {
+      // Plain mousedown → start a drag-select from this block
+      onDragSelectStart(block.id, index)
+    }
   }
 
-  // Divider block - wrapped in container for consistency
+  // Shared grip element used in all block variants
+  const gripEl = (
+    <div
+      data-drag-handle
+      onMouseDown={handleGripMouseDown}
+      className={cn(
+        "w-6 h-6 rounded cursor-grab active:cursor-grabbing flex items-center justify-center transition-opacity text-muted-foreground/40 hover:text-muted-foreground/70 flex-shrink-0",
+        isSelected ? "opacity-60" : "opacity-0 group-hover:opacity-100"
+      )}
+      title="Drag to select · Shift+click range · Cmd+click toggle"
+    >
+      <GripVertical className="w-4 h-4" />
+    </div>
+  )
+
+  // Divider block
   if (block.type === 'divider') {
     return (
       <div
@@ -908,19 +923,10 @@ function BlockItem({ block, index, numBlocks, isFocused, isSelected, onUpdate, o
           isSelected && "bg-primary/10 ring-1 ring-primary/20"
         )}
         onClick={handleContainerClick}
+        onMouseEnter={() => onMouseEnterBlock(index)}
       >
         <div className="flex items-center gap-2">
-          <div
-            data-drag-handle
-            className={cn(
-              "w-6 h-6 rounded cursor-grab active:cursor-grabbing flex items-center justify-center transition-opacity text-muted-foreground/40 hover:text-muted-foreground/70",
-              isSelected ? "opacity-40" : "opacity-0 group-hover:opacity-100"
-            )}
-            onClick={handleDragHandleClick}
-            title="Shift+click for range select"
-          >
-            <GripVertical className="w-4 h-4" />
-          </div>
+          {gripEl}
           <hr className="border-border flex-1" />
           <button
             className="h-6 w-6 rounded flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground/40 hover:text-destructive"
@@ -934,7 +940,7 @@ function BlockItem({ block, index, numBlocks, isFocused, isSelected, onUpdate, o
     )
   }
 
-  // Date block - wrapped in container for consistency
+  // Date block
   if (block.type === 'date') {
     return (
       <div
@@ -945,19 +951,10 @@ function BlockItem({ block, index, numBlocks, isFocused, isSelected, onUpdate, o
           isSelected && "bg-primary/10 ring-1 ring-primary/20"
         )}
         onClick={handleContainerClick}
+        onMouseEnter={() => onMouseEnterBlock(index)}
       >
         <div className="flex items-center gap-2">
-          <div
-            data-drag-handle
-            className={cn(
-              "w-6 h-6 rounded cursor-grab active:cursor-grabbing flex items-center justify-center transition-opacity text-muted-foreground/40 hover:text-muted-foreground/70",
-              isSelected ? "opacity-40" : "opacity-0 group-hover:opacity-100"
-            )}
-            onClick={handleDragHandleClick}
-            title="Shift+click for range select"
-          >
-            <GripVertical className="w-4 h-4" />
-          </div>
+          {gripEl}
           <DateBlock block={block} onUpdate={onUpdate} />
           <button
             className="h-6 w-6 rounded flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground/40 hover:text-destructive ml-auto"
@@ -1015,27 +1012,23 @@ function BlockItem({ block, index, numBlocks, isFocused, isSelected, onUpdate, o
         isSelected && "bg-primary/10 ring-1 ring-primary/20"
       )}
       onClick={handleContainerClick}
+      onMouseEnter={() => onMouseEnterBlock(index)}
     >
-      {/* Left-margin click zone: click the gutter to select without entering edit mode */}
+      {/* Left-margin mousedown zone: drag down to select blocks without entering text */}
       <div
         className="absolute left-0 top-0 bottom-0 w-7 cursor-pointer"
-        onClick={(e) => {
-          e.stopPropagation()
-          const activeEl = document.activeElement as HTMLElement
-          if (activeEl?.contentEditable === 'true') activeEl.blur()
-          onSelect(block.id, e)
-        }}
+        onMouseDown={handleGripMouseDown}
       />
       <div className="flex items-start gap-2">
         {/* Drag handle */}
         <div
           data-drag-handle
+          onMouseDown={handleGripMouseDown}
           className={cn(
             "w-6 h-6 rounded cursor-grab active:cursor-grabbing flex items-center justify-center transition-opacity text-muted-foreground/40 hover:text-muted-foreground/70 flex-shrink-0 mt-1",
-            isSelected ? "opacity-40" : "opacity-0 group-hover:opacity-100"
+            isSelected ? "opacity-60" : "opacity-0 group-hover:opacity-100"
           )}
-          onClick={handleDragHandleClick}
-          title="Click to select · Shift+click for range select"
+          title="Drag to select · Shift+click range · Cmd+click toggle"
         >
           <GripVertical className="w-4 h-4" />
         </div>
@@ -1253,74 +1246,42 @@ function NoteEditor({ note, allTags, onChange, onDelete }: {
     deleteSelectedBlocksRef.current = deleteSelectedBlocks
   }, [note.blocks, selectedBlockIds])
 
-  // Ref so the cross-block selection handler always sees the latest blocks list
-  const noteBlocksRef = useRef(note.blocks)
-  useEffect(() => {
-    noteBlocksRef.current = note.blocks
-  }, [note.blocks])
+  // ── Drag-select refs ────────────────────────────────────────────────────────
+  // Always-fresh view of blocks list (needed inside window event handlers)
+  const noteBlocksRef     = useRef(note.blocks)
+  const isDraggingRef     = useRef(false)
+  const dragAnchorIdxRef  = useRef<number | null>(null)
 
-  // Detects when a mouse-drag text selection spans multiple blocks and converts
-  // it to a block-level selection (similar to Notion). Wired to onMouseUp on the
-  // block list container so it fires as soon as the drag ends.
-  function handleCrossBlockSelection() {
-    const sel = window.getSelection()
-    if (!sel || sel.isCollapsed || sel.rangeCount === 0) return
+  useEffect(() => { noteBlocksRef.current = note.blocks }, [note.blocks])
 
-    const range = sel.getRangeAt(0)
-    const toBlockEl = (node: Node): HTMLElement | null =>
-      (node.nodeType === Node.TEXT_NODE ? node.parentElement : node as Element)
-        ?.closest<HTMLElement>('[data-block-id]') ?? null
+  // Called by BlockItem's grip/margin onMouseDown
+  function startDragSelect(blockId: string, blockIdx: number) {
+    isDraggingRef.current    = true
+    dragAnchorIdxRef.current = blockIdx
+    ;(document.activeElement as HTMLElement)?.blur()
+    setFocusedBlockId(null)
+    setSelectedBlockIds(new Set([blockId]))
+    setLastSelectedIdx(blockIdx)
+  }
 
-    const startEl = toBlockEl(range.startContainer)
-    const endEl   = toBlockEl(range.endContainer)
-    if (!startEl || !endEl) return
-
-    const startId = startEl.dataset.blockId
-    const endId   = endEl.dataset.blockId
-    // Same block — leave browser's native text selection intact
-    if (!startId || !endId || startId === endId) return
-
-    // compute offsets within each block
-    function offsetIn(el: HTMLElement, node: Node, off: number) {
-      try {
-        const r = document.createRange()
-        r.setStart(el, 0)
-        r.setEnd(node, off)
-        return r.toString().length
-      } catch {
-        return -1
-      }
-    }
-    const startOffset = offsetIn(startEl, range.startContainer, range.startOffset)
-    const endOffset   = offsetIn(endEl, range.endContainer, range.endOffset)
-    const startText = startEl.textContent || ''
-    const endText   = endEl.textContent   || ''
-
-    // Only convert to block selection if the drag covered whole blocks from
-    // boundary to boundary. Otherwise keep the native text selection (allows
-    // partial text across adjacent blocks).
-    const fullForward = startOffset === 0 && endOffset === endText.length
-    const fullBackward = startOffset === startText.length && endOffset === 0
-    if (!(fullForward || fullBackward)) {
-      return
-    }
-
+  // Called by BlockItem's onMouseEnter while a drag is active
+  function extendDragSelect(blockIdx: number) {
+    if (!isDraggingRef.current || dragAnchorIdxRef.current === null) return
+    const anchor = dragAnchorIdxRef.current
     const blocks = noteBlocksRef.current
-    const si = blocks.findIndex(b => b.id === startId)
-    const ei = blocks.findIndex(b => b.id === endId)
-    if (si === -1 || ei === -1) return
-
-    const [from, to] = si <= ei ? [si, ei] : [ei, si]
+    const [from, to] = anchor <= blockIdx ? [anchor, blockIdx] : [blockIdx, anchor]
     const ids = new Set<string>()
     for (let i = from; i <= to; i++) ids.add(blocks[i].id)
-
-    // Replace the native text selection with a block-level highlight
-    sel.removeAllRanges()
-    ;(document.activeElement as HTMLElement)?.blur()
     setSelectedBlockIds(ids)
-    setLastSelectedIdx(to)
-    setFocusedBlockId(null)
+    setLastSelectedIdx(blockIdx)
   }
+
+  // Stop drag on mouseup anywhere in the window
+  useEffect(() => {
+    function onMouseUp() { isDraggingRef.current = false }
+    window.addEventListener('mouseup', onMouseUp)
+    return () => window.removeEventListener('mouseup', onMouseUp)
+  }, [])
 
   useEffect(() => {
     function handleKeyDown(e: KeyboardEvent) {
@@ -1470,7 +1431,7 @@ function NoteEditor({ note, allTags, onChange, onDelete }: {
           </div>
 
           {/* Blocks */}
-          <div className="space-y-0" onMouseUp={handleCrossBlockSelection}>
+          <div className="space-y-0">
             {note.blocks.map((block, index) => (
               <BlockItem
                 key={block.id}
@@ -1484,6 +1445,8 @@ function NoteEditor({ note, allTags, onChange, onDelete }: {
                 onDelete={deleteBlock}
                 onFocus={setFocusedBlockId}
                 onSelect={selectBlock}
+                onDragSelectStart={startDragSelect}
+                onMouseEnterBlock={extendDragSelect}
                 onPasteLines={insertPastedLines}
               />
             ))}
