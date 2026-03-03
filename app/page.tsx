@@ -1651,10 +1651,11 @@ function NoteEditor({ note, allTags, onChange, onDelete }: {
                 {note.emoji}
               </button>
               {showEmojiPicker && (
-                <div className="absolute top-full left-0 z-50 mt-1 p-2 bg-popover border rounded-xl shadow-xl grid grid-cols-8 gap-1">
+                <div className="absolute top-full left-0 z-50 mt-1 p-2 bg-popover border rounded-xl shadow-xl grid grid-cols-8 gap-1 w-max">
                   {NOTE_EMOJIS.map(em => (
                     <button key={em}
-                      className={cn("w-9 h-9 flex items-center justify-center flex-shrink-0 text-xl rounded hover:bg-accent transition-colors", em === note.emoji && 'bg-accent')}
+                      className={cn("w-10 h-10 flex items-center justify-center flex-shrink-0 overflow-hidden rounded hover:bg-accent transition-colors", em === note.emoji && 'bg-accent')}
+                      style={{ fontSize: '22px', lineHeight: 1 }}
                       onClick={() => { onChange({ emoji: em }); setShowEmojiPicker(false) }}
                     >{em}</button>
                   ))}
