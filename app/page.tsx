@@ -1414,6 +1414,95 @@ function NoteEditor({ note, allTags, onChange, onDelete }: {
     return () => window.removeEventListener('mouseup', onMouseUp)
   }, [])
 
+  // ── Cross-block text drag-selection ─────────────────────────────────────────
+  // Browsers can't drag-select text across separate contenteditable elements —
+  // the selection gets trapped in whichever block the drag started in.
+  // Fix: on mousedown inside a contenteditable, snapshot the anchor position;
+  // on mousemove (button held), if the cursor has moved into a different block
+  // extend the selection programmatically via setBaseAndExtent +
+  // caretRangeFromPoint so the visual highlight spans all covered blocks.
+  useEffect(() => {
+    const state = {
+      active: false,
+      anchorNode: null as Node | null,
+      anchorOffset: 0,
+      anchorBlockEl: null as Element | null,
+    }
+
+    // Cross-browser helper: get the DOM node + offset under a viewport coordinate
+    function caretAt(x: number, y: number): { node: Node; offset: number } | null {
+      if (document.caretRangeFromPoint) {
+        const r = document.caretRangeFromPoint(x, y)
+        return r ? { node: r.startContainer, offset: r.startOffset } : null
+      }
+      // Firefox
+      const pos = (document as any).caretPositionFromPoint?.(x, y)
+      return pos ? { node: pos.offsetNode, offset: pos.offset } : null
+    }
+
+    function onMouseDown(e: MouseEvent) {
+      state.active = false
+      state.anchorNode = null
+
+      const target = e.target as Element
+      // Only activate for clicks that land directly inside a contenteditable
+      if (!target.closest('[contenteditable]')) return
+      // Ignore grip handles and other block-selection controls
+      if (target.closest('[data-drag-handle]')) return
+
+      const blockEl = target.closest('[data-block-id]')
+      if (!blockEl) return
+
+      // Snapshot where the drag begins using caretRangeFromPoint
+      const caret = caretAt(e.clientX, e.clientY)
+      if (!caret) return
+
+      state.active       = true
+      state.anchorNode   = caret.node
+      state.anchorOffset = caret.offset
+      state.anchorBlockEl = blockEl
+    }
+
+    function onMouseMove(e: MouseEvent) {
+      if (e.buttons !== 1 || !state.active || !state.anchorNode) return
+
+      const target = e.target as Element
+      const targetBlockEl = target.closest('[data-block-id]')
+
+      // Only intervene when the pointer has crossed into a different block
+      if (!targetBlockEl || targetBlockEl === state.anchorBlockEl) return
+
+      const caret = caretAt(e.clientX, e.clientY)
+      if (!caret) return
+
+      // Only extend into text blocks — skip date/divider that have no editable
+      const inEditable = caret.node instanceof Element
+        ? caret.node.closest('[contenteditable]')
+        : (caret.node as Node).parentElement?.closest('[contenteditable]')
+      if (!inEditable) return
+
+      try {
+        window.getSelection()?.setBaseAndExtent(
+          state.anchorNode!, state.anchorOffset,
+          caret.node, caret.offset
+        )
+      } catch {}
+    }
+
+    function onMouseUp() {
+      state.active = false
+    }
+
+    window.addEventListener('mousedown', onMouseDown)
+    window.addEventListener('mousemove', onMouseMove)
+    window.addEventListener('mouseup',   onMouseUp)
+    return () => {
+      window.removeEventListener('mousedown', onMouseDown)
+      window.removeEventListener('mousemove', onMouseMove)
+      window.removeEventListener('mouseup',   onMouseUp)
+    }
+  }, [])
+
   useEffect(() => {
     function handleKeyDown(e: KeyboardEvent) {
       const activeEl = document.activeElement as HTMLElement
