@@ -1251,7 +1251,7 @@ function NoteEditor({ note, allTags, onChange, onDelete }: {
 
   useEffect(() => {
     deleteSelectedBlocksRef.current = deleteSelectedBlocks
-  }, [note.blocks])
+  }, [note.blocks, selectedBlockIds])
 
   // Ref so the cross-block selection handler always sees the latest blocks list
   const noteBlocksRef = useRef(note.blocks)
