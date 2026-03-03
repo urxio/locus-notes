@@ -13,6 +13,7 @@ import {
   Code2, Quote, CheckSquare, Minus, PanelLeftClose, PanelLeftOpen,
   ChevronRight, BookOpen, MoreHorizontal,
 } from "lucide-react"
+import { ThemeSwitcher } from "@/components/theme-switcher"
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -610,7 +611,7 @@ function BlockItem({ block, index, numBlocks, isFocused, onUpdate, onInsert, onD
 
   const baseEditable = cn(
     "outline-none min-h-[1.4em] break-words",
-    "empty:before:content-[attr(data-placeholder)] empty:before:text-muted-foreground/40",
+    "empty:before:content-[attr(data-placeholder)] empty:before:text-muted-foreground/50",
   )
   const typeClass: Record<BlockType, string> = {
     h1: 'text-3xl font-bold tracking-tight',
@@ -619,8 +620,8 @@ function BlockItem({ block, index, numBlocks, isFocused, onUpdate, onInsert, onD
     p: 'text-base leading-relaxed',
     bullet: 'text-base leading-relaxed',
     numbered: 'text-base leading-relaxed',
-    quote: 'text-base leading-relaxed italic border-l-4 border-primary/50 pl-4 text-muted-foreground',
-    code: 'text-sm font-mono bg-muted rounded-md px-3 py-2',
+    quote: 'text-base leading-relaxed italic border-l-4 border-primary/60 pl-4 text-foreground/70',
+    code: 'text-sm font-mono bg-muted/80 dark:bg-muted rounded-md px-3 py-2 text-foreground/90',
     divider: '',
     todo: 'text-base leading-relaxed',
   }
@@ -886,13 +887,13 @@ function NoteEditor({ note, allTags, onChange, onDelete }: {
                 )}
               </div>
             </div>
-            <p className="mt-2 text-[10px] text-muted-foreground/40">
+            <p className="mt-2 text-[10px] text-muted-foreground/60">
               Press Enter or comma to add · Notes sharing tags connect in the graph
             </p>
           </div>
 
           {/* Meta */}
-          <div className="mt-6 flex gap-4 text-[10px] text-muted-foreground/40">
+          <div className="mt-6 flex gap-4 text-[10px] text-muted-foreground/60">
             <span>Created {new Date(note.createdAt).toLocaleDateString()}</span>
             <span>·</span>
             <span>Updated {new Date(note.updatedAt).toLocaleDateString()}</span>
@@ -949,7 +950,9 @@ function Sidebar({ notes, activeId, search, onSearch, onSelect, onCreate, active
               onClick={() => onSelect(note.id)}
               className={cn(
                 "w-full text-left px-2.5 py-2 rounded-lg flex items-start gap-2.5 group transition-colors",
-                note.id === activeId ? 'bg-background shadow-sm' : 'hover:bg-background/60'
+                note.id === activeId
+                  ? 'bg-background shadow-sm ring-1 ring-border'
+                  : 'hover:bg-background/80'
               )}
             >
               <span className="text-base leading-none mt-0.5 flex-shrink-0">{note.emoji}</span>
@@ -957,9 +960,9 @@ function Sidebar({ notes, activeId, search, onSearch, onSelect, onCreate, active
                 <div className="text-sm font-medium truncate">{note.title || 'Untitled'}</div>
                 <div className="flex flex-wrap gap-1 mt-1">
                   {note.tags.slice(0, 3).map(tag => (
-                    <span key={tag} className="text-[9px] text-muted-foreground font-mono">#{tag}</span>
+                    <span key={tag} className="text-[10px] text-muted-foreground font-mono font-medium">#{tag}</span>
                   ))}
-                  {note.tags.length > 3 && <span className="text-[9px] text-muted-foreground/60">+{note.tags.length - 3}</span>}
+                  {note.tags.length > 3 && <span className="text-[10px] text-muted-foreground/70">+{note.tags.length - 3}</span>}
                 </div>
               </div>
               <span className="w-1.5 h-1.5 rounded-full flex-shrink-0 mt-1.5" style={{ backgroundColor: note.color }} />
@@ -978,7 +981,7 @@ function Sidebar({ notes, activeId, search, onSearch, onSelect, onCreate, active
           <div className="px-3 pt-2 pb-3 border-t mt-2">
             <div className="flex items-center gap-1.5 mb-2">
               <Hash className="w-3 h-3 text-muted-foreground" />
-              <span className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">Tags</span>
+              <span className="text-[10px] font-semibold text-foreground/60 uppercase tracking-wider">Tags</span>
               {activeTag && (
                 <button onClick={() => onTagFilter(null)}
                   className="ml-auto text-[9px] text-primary hover:underline">clear</button>
@@ -1008,7 +1011,7 @@ function Sidebar({ notes, activeId, search, onSearch, onSelect, onCreate, active
 
       {/* Footer */}
       <div className="p-3 border-t">
-        <p className="text-[10px] text-muted-foreground/40 text-center">Nexus Notes</p>
+        <p className="text-[10px] text-muted-foreground/50 text-center">Nexus Notes</p>
       </div>
     </div>
   )
@@ -1127,7 +1130,7 @@ export default function NotesPage() {
         <div className="flex-1 min-w-0 flex flex-col overflow-hidden">
           {/* Top toolbar */}
           <div className="flex items-center gap-2 px-4 py-2 border-b bg-background/95 backdrop-blur-sm">
-            <div className="flex items-center gap-1 ml-auto">
+            <div className="flex items-center gap-2 ml-auto">
               <Tooltip>
                 <TooltipTrigger asChild>
                   <Button variant={graphOpen ? 'secondary' : 'ghost'} size="sm"
@@ -1139,6 +1142,7 @@ export default function NotesPage() {
                 </TooltipTrigger>
                 <TooltipContent>Toggle tag network graph</TooltipContent>
               </Tooltip>
+              <ThemeSwitcher />
             </div>
           </div>
 
