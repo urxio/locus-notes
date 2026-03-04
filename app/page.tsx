@@ -642,7 +642,7 @@ function DateBlock({ block, onUpdate }: { block: Block; onUpdate: (id: string, p
 // ─── BlockItem ────────────────────────────────────────────────────────────────
 
 interface BlockItemProps {
-  block: Block; index: number; numBlocks: number; isFocused: boolean
+  block: Block; index: number; listIndex: number; numBlocks: number; isFocused: boolean
   isSelected: boolean
   onUpdate: (id: string, patch: Partial<Block>) => void
   onInsert: (afterId: string, type?: BlockType, content?: string) => void
@@ -655,7 +655,7 @@ interface BlockItemProps {
   onPasteLines: (afterId: string, lines: string[]) => void
 }
 
-function BlockItem({ block, index, numBlocks, isFocused, isSelected, onUpdate, onInsert, onDelete, onDuplicate, onFocus, onSelect, onDragSelectStart, onMouseEnterBlock, onPasteLines }: BlockItemProps) {
+function BlockItem({ block, index, listIndex, numBlocks, isFocused, isSelected, onUpdate, onInsert, onDelete, onDuplicate, onFocus, onSelect, onDragSelectStart, onMouseEnterBlock, onPasteLines }: BlockItemProps) {
   const ref = useRef<HTMLDivElement>(null)
   const containerRef = useRef<HTMLDivElement>(null)
   const [showMenu, setShowMenu] = useState(false)
@@ -672,27 +672,30 @@ function BlockItem({ block, index, numBlocks, isFocused, isSelected, onUpdate, o
     }
   }, [block.type]) // only reset on type change, not content
 
-  // Focus imperatively (cursor at start — user-click focus is handled by the browser
-  // and skips this block because document.activeElement === ref.current already)
+  // Focus imperatively (cursor at start).
+  // Depends on both isFocused AND block.type: when a slash-command changes the
+  // type (e.g. p → bullet/todo) React unmounts the old contenteditable and
+  // mounts a new one inside the wrapper div, losing focus. Adding block.type
+  // here ensures we re-fire and restore focus after any type change.
   useEffect(() => {
-    if (isFocused && ref.current && document.activeElement !== ref.current) {
+    if (!isFocused || !ref.current) return
+    // ref.current is null for date/divider (no contenteditable) — skip safely
+    if (document.activeElement !== ref.current) {
       ref.current.focus()
-      try {
-        const range = document.createRange()
-        const sel = window.getSelection()
-        // Place at position 0 (start of block). For empty blocks firstChild is null
-        // and setStart(el, 0) also works correctly.
-        if (ref.current.firstChild) {
-          range.setStart(ref.current.firstChild, 0)
-        } else {
-          range.setStart(ref.current, 0)
-        }
-        range.collapse(true)
-        sel?.removeAllRanges()
-        sel?.addRange(range)
-      } catch {}
     }
-  }, [isFocused])
+    try {
+      const range = document.createRange()
+      const sel = window.getSelection()
+      if (ref.current.firstChild) {
+        range.setStart(ref.current.firstChild, 0)
+      } else {
+        range.setStart(ref.current, 0)
+      }
+      range.collapse(true)
+      sel?.removeAllRanges()
+      sel?.addRange(range)
+    } catch {}
+  }, [isFocused, block.type])
 
   const filteredMenu = SLASH_MENU_ITEMS.filter(item =>
     item.label.toLowerCase().includes(menuFilter.toLowerCase()) ||
@@ -866,6 +869,12 @@ function BlockItem({ block, index, numBlocks, isFocused, isSelected, onUpdate, o
     onUpdate(block.id, { type, content })
     setShowMenu(false)
     setMenuFilter('')
+    // date / divider have no contenteditable, so the cursor would vanish.
+    // Wait one tick (after the onUpdate state flush) then insert an empty
+    // paragraph below and move focus there.
+    if (type === 'date' || type === 'divider') {
+      setTimeout(() => onInsert(block.id, 'p', ''), 0)
+    }
   }
 
   function handleBlockDelete() {
@@ -1041,7 +1050,7 @@ function BlockItem({ block, index, numBlocks, isFocused, isSelected, onUpdate, o
           </div>
         ) : block.type === 'numbered' ? (
           <div className="flex items-start gap-2.5 flex-1">
-            <span className="mt-0.5 text-muted-foreground/60 text-sm tabular-nums select-none min-w-[1.2em]">{index + 1}.</span>
+            <span className="mt-0.5 text-muted-foreground/60 text-sm tabular-nums select-none min-w-[1.2em]">{listIndex + 1}.</span>
             {editableEl}
           </div>
         ) : block.type === 'todo' ? (
@@ -1679,11 +1688,22 @@ function NoteEditor({ note, allTags, onChange, onDelete }: {
 
           {/* Blocks */}
           <div className="space-y-0">
-            {note.blocks.map((block, index) => (
+            {note.blocks.map((block, index) => {
+              // For numbered blocks, count how many consecutive numbered blocks
+              // precede this one so the list always starts at 1.
+              let listIndex = 0
+              if (block.type === 'numbered') {
+                for (let i = index - 1; i >= 0; i--) {
+                  if (note.blocks[i].type === 'numbered') listIndex++
+                  else break
+                }
+              }
+              return (
               <BlockItem
                 key={block.id}
                 block={block}
                 index={index}
+                listIndex={listIndex}
                 numBlocks={note.blocks.length}
                 isFocused={focusedBlockId === block.id}
                 isSelected={selectedBlockIds.has(block.id)}
@@ -1696,7 +1716,8 @@ function NoteEditor({ note, allTags, onChange, onDelete }: {
                 onMouseEnterBlock={extendDragSelect}
                 onPasteLines={insertPastedLines}
               />
-            ))}
+              )
+            })}
           </div>
 
           {/* Add block button */}
