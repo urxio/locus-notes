@@ -2033,6 +2033,19 @@ function NoteEditor({ note, allTags, onChange, onDelete, people, onCreatePerson,
   }, [pushHistory])
 
   function undo() {
+    // If typing debounce is pending, cancel it and restore the pre-typing state directly
+    if (debouncedHistoryUpdateRef.current && pendingHistoryStateRef.current) {
+      clearTimeout(debouncedHistoryUpdateRef.current)
+      debouncedHistoryUpdateRef.current = null
+      const previous = pendingHistoryStateRef.current
+      pendingHistoryStateRef.current = null
+      historyRef.current = {
+        past: historyRef.current.past,
+        future: [note.blocks, ...historyRef.current.future]
+      }
+      onChange(note.id, { blocks: previous })
+      return
+    }
     const { past, future } = historyRef.current
     if (past.length === 0) return
     const previous = past[past.length - 1]
