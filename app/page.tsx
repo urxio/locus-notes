@@ -1064,20 +1064,20 @@ function BlockItem({ block, index, listIndex, numBlocks, isFocused, isSelected, 
 
         {/* Content */}
         {block.type === 'bullet' ? (
-          <div className="flex items-start gap-2.5 flex-1">
-            <span className="mt-1.5 text-muted-foreground/60 text-sm leading-none select-none">•</span>
+          <div className="flex items-baseline gap-2 flex-1">
+            <span className="text-muted-foreground/60 leading-none select-none shrink-0 w-4 text-center">•</span>
             {editableEl}
           </div>
         ) : block.type === 'numbered' ? (
-          <div className="flex items-start gap-1 flex-1">
-            <span className="mt-0.5 text-muted-foreground/60 text-sm tabular-nums select-none w-6 text-right shrink-0">{listIndex + 1}.</span>
+          <div className="flex items-baseline gap-1 flex-1">
+            <span className="text-muted-foreground/60 text-sm tabular-nums select-none w-5 text-right shrink-0 leading-normal">{listIndex + 1}.</span>
             {editableEl}
           </div>
         ) : block.type === 'todo' ? (
-          <div className="flex items-start gap-2.5 flex-1">
+          <div className="flex items-center gap-2 flex-1">
             <input type="checkbox" checked={block.checked ?? false}
               onChange={() => onUpdate(block.id, { checked: !block.checked })}
-              className="mt-1 rounded cursor-pointer accent-primary flex-shrink-0"
+              className="rounded cursor-pointer accent-primary flex-shrink-0 w-4 h-4"
             />
             <div ref={ref} contentEditable suppressContentEditableWarning
               data-placeholder="To-do"
