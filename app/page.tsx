@@ -2614,14 +2614,14 @@ function NoteEditor({ note, allTags, onChange, onDelete, people, onCreatePerson,
 
       // ── Copied Blocks Cmd-C Cmd-V Navigation ────────────────────────────────
       // Cmd-Z Undo
-      if (e.key.toLowerCase() === 'z' && e.metaKey && !e.shiftKey) {
+      if (e.key.toLowerCase() === 'z' && (e.metaKey || e.ctrlKey) && !e.shiftKey) {
         e.preventDefault()
         undoRef.current()
         return
       }
 
-      // Cmd-Shift-Z Redo
-      if ((e.key.toLowerCase() === 'z' && e.metaKey && e.shiftKey) || (e.key.toLowerCase() === 'y' && e.ctrlKey)) {
+      // Cmd-Shift-Z / Ctrl-Shift-Z Redo
+      if ((e.key.toLowerCase() === 'z' && (e.metaKey || e.ctrlKey) && e.shiftKey) || (e.key.toLowerCase() === 'y' && e.ctrlKey)) {
         e.preventDefault()
         redoRef.current()
         return
