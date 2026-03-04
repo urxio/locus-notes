@@ -810,6 +810,8 @@ function BlockItem({ block, index, listIndex, numBlocks, isFocused, isSelected, 
   const [mentionFilter, setMentionFilter] = useState('')
   const [mentionIdx, setMentionIdx] = useState(0)
   const mentionAnchorRef = useRef<number>(-1)
+  const activeEditorRef = useRef<'main' | 'body'>('main')
+  const slashAnchorRef = useRef<number>(-1)
   // @ New-type inline form state
   const [showNewTypeForm, setShowNewTypeForm] = useState(false)
   const [newTypeName, setNewTypeName] = useState('')
@@ -880,41 +882,48 @@ function BlockItem({ block, index, listIndex, numBlocks, isFocused, isSelected, 
       }
     }
 
-    // Slash menu
-    if (text.startsWith('/')) {
-      setMenuFilter(text.slice(1))
-      setMenuIdx(0)
-      setShowMenu(true)
-    } else {
-      setShowMenu(false)
-    }
-
-    // @ mention — detect `@word` pattern immediately before cursor
+    // @ mention and Slash menu
     try {
       const cursorEl = e.currentTarget
       const sel = window.getSelection()
+      let isCollapsed = false
+      let textBeforeCursor = text
       if (sel && sel.rangeCount > 0 && sel.isCollapsed) {
+        isCollapsed = true
         const range = sel.getRangeAt(0)
         const pre = document.createRange()
         pre.setStart(cursorEl, 0)
         pre.setEnd(range.startContainer, range.startOffset)
-        const textBeforeCursor = pre.toString()
-        const atMatch = textBeforeCursor.match(/@([^@\s]*)$/)
-        if (atMatch) {
-          setMentionFilter(atMatch[1])
-          setMentionIdx(0)
-          setShowMentionMenu(true)
-          mentionAnchorRef.current = textBeforeCursor.length - atMatch[0].length
-        } else {
-          setShowMentionMenu(false)
-          mentionAnchorRef.current = -1
-        }
+        textBeforeCursor = pre.toString()
+      }
+
+      const atMatch = isCollapsed ? textBeforeCursor.match(/@([^@\s]*)$/) : null
+      if (atMatch) {
+        setMentionFilter(atMatch[1])
+        setMentionIdx(0)
+        setShowMentionMenu(true)
+        mentionAnchorRef.current = textBeforeCursor.length - atMatch[0].length
       } else {
         setShowMentionMenu(false)
         mentionAnchorRef.current = -1
       }
+
+      const slashMatch = isCollapsed ? textBeforeCursor.match(/(?:^|\s)\/([^/\s]*)$/) : null
+      if (slashMatch && !atMatch) {
+        setMenuFilter(slashMatch[1])
+        setMenuIdx(0)
+        setShowMenu(true)
+        const matchText = slashMatch[0]
+        const spaceOffset = matchText.startsWith(' ') || matchText.startsWith('\n') ? 1 : 0
+        slashAnchorRef.current = textBeforeCursor.length - matchText.length + spaceOffset
+        activeEditorRef.current = 'main'
+      } else {
+        setShowMenu(false)
+        slashAnchorRef.current = -1
+      }
     } catch {
       setShowMentionMenu(false)
+      setShowMenu(false)
     }
 
     onUpdate(block.id, { content: text })
@@ -993,7 +1002,7 @@ function BlockItem({ block, index, listIndex, numBlocks, isFocused, isSelected, 
         applyMenuItem(filteredMenu[menuIdx].type)
         return
       }
-      if (e.key === 'Escape') { setShowMenu(false); return }
+      if (e.key === 'Escape') { setShowMenu(false); slashAnchorRef.current = -1; return }
     }
 
     if (showMentionMenu) {
@@ -1169,10 +1178,53 @@ function BlockItem({ block, index, listIndex, numBlocks, isFocused, isSelected, 
 
   function handleBodyInput(e: React.FormEvent<HTMLDivElement>) {
     const text = e.currentTarget.textContent || ''
+
+    try {
+      const cursorEl = e.currentTarget
+      const sel = window.getSelection()
+      let isCollapsed = false
+      let textBeforeCursor = text
+      if (sel && sel.rangeCount > 0 && sel.isCollapsed) {
+        isCollapsed = true
+        const range = sel.getRangeAt(0)
+        const pre = document.createRange()
+        pre.setStart(cursorEl, 0)
+        pre.setEnd(range.startContainer, range.startOffset)
+        textBeforeCursor = pre.toString()
+      }
+
+      const slashMatch = isCollapsed ? textBeforeCursor.match(/(?:^|\s)\/([^/\s]*)$/) : null
+      if (slashMatch) {
+        setMenuFilter(slashMatch[1])
+        setMenuIdx(0)
+        setShowMenu(true)
+        const matchText = slashMatch[0]
+        const spaceOffset = matchText.startsWith(' ') || matchText.startsWith('\n') ? 1 : 0
+        slashAnchorRef.current = textBeforeCursor.length - matchText.length + spaceOffset
+        activeEditorRef.current = 'body'
+      } else {
+        setShowMenu(false)
+        slashAnchorRef.current = -1
+      }
+    } catch {
+      setShowMenu(false)
+    }
+
     onUpdate(block.id, { expandedContent: text })
   }
 
   function handleBodyKeyDown(e: React.KeyboardEvent<HTMLDivElement>) {
+    if (showMenu) {
+      if (e.key === 'ArrowDown') { e.preventDefault(); setMenuIdx(i => Math.min(i + 1, filteredMenu.length - 1)); return }
+      if (e.key === 'ArrowUp') { e.preventDefault(); setMenuIdx(i => Math.max(i - 1, 0)); return }
+      if (e.key === 'Enter' && filteredMenu[menuIdx]) {
+        e.preventDefault()
+        applyMenuItem(filteredMenu[menuIdx].type)
+        return
+      }
+      if (e.key === 'Escape') { setShowMenu(false); slashAnchorRef.current = -1; return }
+    }
+
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault()
       onInsert(block.id, 'p', '')
@@ -1204,23 +1256,82 @@ function BlockItem({ block, index, listIndex, numBlocks, isFocused, isSelected, 
   }
 
   function applyMenuItem(type: BlockType) {
-    if (ref.current) ref.current.textContent = ''
-    let content = ''
-    if (type === 'date') {
-      content = new Date().toISOString().split('T')[0]
-    } else if (type === 'table') {
-      // Default 3×3 table: rows separated by \n, cells by |
-      content = '   |   |   \n   |   |   \n   |   |   '
+    const activeIsBody = activeEditorRef.current === 'body'
+    const el = activeIsBody ? bodyRef.current : ref.current
+    const anchor = slashAnchorRef.current
+    if (!el) return
+
+    const currentAnchor = anchor !== -1 ? anchor : 0
+    const currentText = el.textContent || ''
+
+    // Find current cursor position
+    let cursorPos = currentText.length
+    const sel = window.getSelection()
+    if (sel && sel.rangeCount > 0) {
+      try {
+        const range = sel.getRangeAt(0)
+        const pre = document.createRange()
+        pre.setStart(el, 0)
+        pre.setEnd(range.startContainer, range.startOffset)
+        cursorPos = pre.toString().length
+      } catch { }
     }
-    onUpdate(block.id, { type, content })
+
+    const beforeSlash = currentText.slice(0, currentAnchor)
+    const afterCursor = currentText.slice(cursorPos)
+
+    if (type === 'date') {
+      const dateStr = new Date().toISOString().split('T')[0]
+      const newText = beforeSlash + dateStr + afterCursor
+      el.textContent = newText
+
+      try {
+        const textNode = el.firstChild
+        if (textNode && textNode.nodeType === Node.TEXT_NODE) {
+          const range = document.createRange()
+          const pos = currentAnchor + dateStr.length
+          range.setStart(textNode, pos)
+          range.collapse(true)
+          sel?.removeAllRanges()
+          sel?.addRange(range)
+        }
+      } catch { }
+
+      if (activeIsBody) {
+        onUpdate(block.id, { expandedContent: newText })
+      } else {
+        onUpdate(block.id, { content: newText })
+      }
+    } else {
+      if (activeIsBody) {
+        // structural command from body: remove the slash command from body text
+        const newBodyText = beforeSlash + afterCursor
+        el.textContent = newBodyText
+        onUpdate(block.id, { expandedContent: newBodyText })
+
+        let newBlockContent = ''
+        if (type === 'table') {
+          newBlockContent = '   |   |   \n   |   |   \n   |   |   '
+        }
+        setTimeout(() => onInsert(block.id, type, newBlockContent), 0)
+      } else {
+        // structural command from main content: keep typed text but change block type
+        let newBlockContent = beforeSlash + afterCursor
+        if (type === 'table') {
+          newBlockContent = '   |   |   \n   |   |   \n   |   |   '
+        }
+        el.textContent = newBlockContent
+        onUpdate(block.id, { type, content: newBlockContent })
+
+        if (type === 'divider') {
+          setTimeout(() => onInsert(block.id, 'p', ''), 0)
+        }
+      }
+    }
+
     setShowMenu(false)
     setMenuFilter('')
-    // date / divider have no contenteditable, so the cursor would vanish.
-    // Wait one tick (after the onUpdate state flush) then insert an empty
-    // paragraph below and move focus there.
-    if (type === 'date' || type === 'divider') {
-      setTimeout(() => onInsert(block.id, 'p', ''), 0)
-    }
+    slashAnchorRef.current = -1
   }
 
   function handleBlockDelete() {
