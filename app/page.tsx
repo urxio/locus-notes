@@ -2001,6 +2001,7 @@ function NoteEditor({ note, allTags, onChange, onDelete, people, onCreatePerson,
   const historyRef = useRef<{ past: Block[][], future: Block[][] }>({ past: [], future: [] })
 
   const debouncedHistoryUpdateRef = useRef<NodeJS.Timeout | null>(null)
+  const pendingHistoryStateRef = useRef<Block[] | null>(null)
 
   const pushHistory = useCallback((currentState: Block[]) => {
     historyRef.current = {
@@ -2010,13 +2011,24 @@ function NoteEditor({ note, allTags, onChange, onDelete, people, onCreatePerson,
     if (debouncedHistoryUpdateRef.current) {
       clearTimeout(debouncedHistoryUpdateRef.current)
       debouncedHistoryUpdateRef.current = null
+      pendingHistoryStateRef.current = null
     }
   }, [])
 
   const debouncedPushHistory = useCallback((currentState: Block[]) => {
-    if (debouncedHistoryUpdateRef.current) clearTimeout(debouncedHistoryUpdateRef.current)
+    if (!debouncedHistoryUpdateRef.current) {
+      // Capture the state at the beginning of the typing burst
+      pendingHistoryStateRef.current = currentState
+    } else {
+      clearTimeout(debouncedHistoryUpdateRef.current)
+    }
+
     debouncedHistoryUpdateRef.current = setTimeout(() => {
-      pushHistory(currentState)
+      if (pendingHistoryStateRef.current) {
+        pushHistory(pendingHistoryStateRef.current)
+        pendingHistoryStateRef.current = null
+      }
+      debouncedHistoryUpdateRef.current = null
     }, 800)
   }, [pushHistory])
 
@@ -2041,6 +2053,13 @@ function NoteEditor({ note, allTags, onChange, onDelete, people, onCreatePerson,
     }
     onChange(note.id, { blocks: next })
   }
+
+  const undoRef = useRef(undo)
+  const redoRef = useRef(redo)
+  useEffect(() => {
+    undoRef.current = undo
+    redoRef.current = redo
+  })
   const [tagInput, setTagInput] = useState('')
   const [tagSuggestions, setTagSuggestions] = useState<string[]>([])
   const [showEmojiPicker, setShowEmojiPicker] = useState(false)
@@ -2597,14 +2616,14 @@ function NoteEditor({ note, allTags, onChange, onDelete, people, onCreatePerson,
       // Cmd-Z Undo
       if (e.key.toLowerCase() === 'z' && e.metaKey && !e.shiftKey) {
         e.preventDefault()
-        undo()
+        undoRef.current()
         return
       }
 
       // Cmd-Shift-Z Redo
       if ((e.key.toLowerCase() === 'z' && e.metaKey && e.shiftKey) || (e.key.toLowerCase() === 'y' && e.ctrlKey)) {
         e.preventDefault()
-        redo()
+        redoRef.current()
         return
       }
 
@@ -2612,7 +2631,7 @@ function NoteEditor({ note, allTags, onChange, onDelete, people, onCreatePerson,
       if (e.key.toLowerCase() === 'c' && (e.metaKey || e.ctrlKey)) {
         if (selectedIdsRef.current.size > 0 && !isContentEditable) {
           e.preventDefault()
-          const blocksToCopy = note.blocks.filter(b => selectedIdsRef.current.has(b.id))
+          const blocksToCopy = noteBlocksRef.current.filter(b => selectedIdsRef.current.has(b.id))
           const payload = JSON.stringify({ source: 'locus_blocks', blocks: blocksToCopy })
           navigator.clipboard.writeText(payload)
           toast({ description: `${blocksToCopy.length} blocks copied.` })
