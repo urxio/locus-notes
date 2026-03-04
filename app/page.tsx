@@ -842,12 +842,12 @@ function FormatToolbar() {
     >
       {!showColors ? (
         <>
-          <button onClick={() => exec('bold')} className="w-8 h-8 rounded hover:bg-muted flex items-center justify-center text-foreground/80 hover:text-foreground transition-colors" title="Bold (Cmd+B)"><Bold className="w-4 h-4" /></button>
-          <button onClick={() => exec('italic')} className="w-8 h-8 rounded hover:bg-muted flex items-center justify-center text-foreground/80 hover:text-foreground transition-colors" title="Italic (Cmd+I)"><Italic className="w-4 h-4" /></button>
-          <button onClick={() => exec('underline')} className="w-8 h-8 rounded hover:bg-muted flex items-center justify-center text-foreground/80 hover:text-foreground transition-colors" title="Underline (Cmd+U)"><Underline className="w-4 h-4" /></button>
-          <button onClick={() => exec('strikeThrough')} className="w-8 h-8 rounded hover:bg-muted flex items-center justify-center text-foreground/80 hover:text-foreground transition-colors" title="Strikethrough (Cmd+Shift+S)"><Strikethrough className="w-4 h-4" /></button>
+          <button onMouseDown={e => e.preventDefault()} onClick={() => exec('bold')} className="w-8 h-8 rounded hover:bg-muted flex items-center justify-center text-foreground/80 hover:text-foreground transition-colors" title="Bold (Cmd+B)"><Bold className="w-4 h-4" /></button>
+          <button onMouseDown={e => e.preventDefault()} onClick={() => exec('italic')} className="w-8 h-8 rounded hover:bg-muted flex items-center justify-center text-foreground/80 hover:text-foreground transition-colors" title="Italic (Cmd+I)"><Italic className="w-4 h-4" /></button>
+          <button onMouseDown={e => e.preventDefault()} onClick={() => exec('underline')} className="w-8 h-8 rounded hover:bg-muted flex items-center justify-center text-foreground/80 hover:text-foreground transition-colors" title="Underline (Cmd+U)"><Underline className="w-4 h-4" /></button>
+          <button onMouseDown={e => e.preventDefault()} onClick={() => exec('strikeThrough')} className="w-8 h-8 rounded hover:bg-muted flex items-center justify-center text-foreground/80 hover:text-foreground transition-colors" title="Strikethrough (Cmd+Shift+S)"><Strikethrough className="w-4 h-4" /></button>
           <div className="w-px h-5 bg-border mx-1" />
-          <button onClick={() => setShowColors(true)} className="w-8 h-8 rounded hover:bg-muted flex items-center justify-center text-foreground/80 hover:text-foreground transition-colors relative" title="Text Color & Highlight">
+          <button onMouseDown={e => e.preventDefault()} onClick={() => setShowColors(true)} className="w-8 h-8 rounded hover:bg-muted flex items-center justify-center text-foreground/80 hover:text-foreground transition-colors relative" title="Text Color & Highlight">
             <Palette className="w-4 h-4" />
           </button>
         </>
@@ -855,11 +855,11 @@ function FormatToolbar() {
         <div className="flex flex-col gap-2 px-2 py-1 select-none">
           <div className="flex items-center justify-between mb-1">
             <span className="text-[10px] uppercase font-medium text-muted-foreground tracking-wider">Color</span>
-            <button onClick={() => setShowColors(false)} className="text-muted-foreground hover:text-foreground"><X className="w-3 h-3" /></button>
+            <button onMouseDown={e => e.preventDefault()} onClick={() => setShowColors(false)} className="text-muted-foreground hover:text-foreground"><X className="w-3 h-3" /></button>
           </div>
           <div className="flex gap-1">
             {TEXT_COLORS.map(c => (
-              <button key={`t-${c.label}`} onClick={() => { exec('foreColor', c.value); setShowColors(false) }}
+              <button key={`t-${c.label}`} onMouseDown={e => e.preventDefault()} onClick={() => { exec('foreColor', c.value); setShowColors(false) }}
                 className="w-5 h-5 rounded-full border border-border/50 hover:scale-110 transition-transform flex items-center justify-center"
                 style={{ color: c.value === 'inherit' ? 'currentColor' : c.value }} title={c.label}>
                 <span className="text-[10px] font-bold">A</span>
@@ -869,7 +869,7 @@ function FormatToolbar() {
           <span className="text-[10px] uppercase font-medium text-muted-foreground tracking-wider mt-1">Background</span>
           <div className="flex gap-1 pb-1">
             {HIGHLIGHT_COLORS.map(c => (
-              <button key={`h-${c.label}`} onClick={() => { exec('hiliteColor', c.value); setShowColors(false) }}
+              <button key={`h-${c.label}`} onMouseDown={e => e.preventDefault()} onClick={() => { exec('hiliteColor', c.value); setShowColors(false) }}
                 className="w-5 h-5 rounded border border-border/50 hover:scale-110 transition-transform"
                 style={{ backgroundColor: c.value }} title={c.label} />
             ))}
