@@ -793,9 +793,10 @@ interface BlockItemProps {
   showDropIndicatorAbove: boolean
   onNavigateTo: (noteId: string) => void
   objectTypes: ObjectType[]
+  onCreateObjectType: (name: string, emoji: string) => ObjectType
 }
 
-function BlockItem({ block, index, listIndex, numBlocks, isFocused, isSelected, onUpdate, onInsert, onDelete, onMergePrev, onDuplicate, onFocus, onSelect, onDragSelectStart, onMouseEnterBlock, onPasteLines, people, onCreatePerson, onFocusPrev, onFocusNext, onReorderDragStart, isBeingDragged, showDropIndicatorAbove, onNavigateTo, objectTypes }: BlockItemProps) {
+function BlockItem({ block, index, listIndex, numBlocks, isFocused, isSelected, onUpdate, onInsert, onDelete, onMergePrev, onDuplicate, onFocus, onSelect, onDragSelectStart, onMouseEnterBlock, onPasteLines, people, onCreatePerson, onFocusPrev, onFocusNext, onReorderDragStart, isBeingDragged, showDropIndicatorAbove, onNavigateTo, objectTypes, onCreateObjectType }: BlockItemProps) {
   const ref = useRef<HTMLDivElement>(null)
   const containerRef = useRef<HTMLDivElement>(null)
   // Body contenteditable for toggle blocks (mounted only when block.open === true)
@@ -809,6 +810,10 @@ function BlockItem({ block, index, listIndex, numBlocks, isFocused, isSelected, 
   const [mentionFilter, setMentionFilter] = useState('')
   const [mentionIdx, setMentionIdx] = useState(0)
   const mentionAnchorRef = useRef<number>(-1)
+  // @ New-type inline form state
+  const [showNewTypeForm, setShowNewTypeForm] = useState(false)
+  const [newTypeName, setNewTypeName] = useState('')
+  const [newTypeEmoji, setNewTypeEmoji] = useState('🔖')
 
   // Set content imperatively on mount / type change (avoid cursor jump)
   useEffect(() => {
@@ -1555,14 +1560,14 @@ function BlockItem({ block, index, listIndex, numBlocks, isFocused, isSelected, 
         const exactMatch = filteredObjects.some(p => p.name.toLowerCase() === trimmedFilter.toLowerCase())
         const canCreate = trimmedFilter.length > 0 && !exactMatch
         const createOptions = canCreate ? allTypes : []
-        const totalItems = filteredObjects.length + createOptions.length
+        const NEW_TYPE_EMOJIS = ['🔖', '📋', '🏢', '🎯', '💼', '🔧', '🌐', '📅', '🎪', '🔑', '🧩', '⭐']
         return (
           <div className="absolute left-12 top-full z-50 mt-1 w-64 rounded-lg border bg-popover shadow-lg overflow-hidden">
             <div className="px-2 py-1.5 text-[10px] text-muted-foreground font-medium tracking-wider border-b flex items-center gap-1.5">
               <User className="w-3 h-3" />
               OBJECTS
             </div>
-            <div className="py-1 max-h-60 overflow-y-auto">
+            <div className="py-1 max-h-72 overflow-y-auto">
               {filteredObjects.length === 0 && !canCreate && (
                 <div className="px-3 py-3 text-sm text-muted-foreground text-center">
                   <User className="w-4 h-4 mx-auto mb-1 opacity-40" />
@@ -1583,11 +1588,13 @@ function BlockItem({ block, index, listIndex, numBlocks, isFocused, isSelected, 
                   </button>
                 )
               })}
-              {canCreate && createOptions.length > 0 && (
+              {canCreate && (
                 <>
                   {filteredObjects.length > 0 && <div className="border-t my-1" />}
-                  <div className="px-2 py-1 text-[10px] text-muted-foreground/60 font-medium">Create as…</div>
-                  {createOptions.map((objType, i) => (
+                  {!showNewTypeForm && (
+                    <div className="px-2 py-1 text-[10px] text-muted-foreground/60 font-medium">Create as…</div>
+                  )}
+                  {!showNewTypeForm && createOptions.map((objType, i) => (
                     <button
                       key={objType.id}
                       className={cn("w-full flex items-center gap-2.5 px-3 py-1.5 text-sm hover:bg-accent transition-colors text-left",
@@ -1605,6 +1612,73 @@ function BlockItem({ block, index, listIndex, numBlocks, isFocused, isSelected, 
                       </span>
                     </button>
                   ))}
+                  {/* New custom type option */}
+                  {!showNewTypeForm && (
+                    <button
+                      className="w-full flex items-center gap-2.5 px-3 py-1.5 text-sm hover:bg-accent transition-colors text-left text-muted-foreground border-t mt-1 pt-2"
+                      onMouseDown={e => { e.preventDefault(); setShowNewTypeForm(true); setNewTypeName(''); setNewTypeEmoji('🔖') }}
+                    >
+                      <Plus className="w-3.5 h-3.5" />
+                      <span>New type…</span>
+                    </button>
+                  )}
+                  {/* Inline new-type form */}
+                  {showNewTypeForm && (
+                    <div className="px-3 py-2 space-y-2" onMouseDown={e => e.preventDefault()}>
+                      <div className="text-[10px] text-muted-foreground/60 font-medium uppercase tracking-wider">New Type</div>
+                      <div className="flex items-center gap-2">
+                        <input
+                          autoFocus
+                          value={newTypeName}
+                          onChange={e => setNewTypeName(e.target.value)}
+                          placeholder="Type name…"
+                          className="flex-1 text-sm bg-muted/60 rounded px-2 py-1.5 outline-none border border-transparent focus:border-input"
+                          onKeyDown={e => {
+                            if (e.key === 'Enter' && newTypeName.trim()) {
+                              e.preventDefault()
+                              const newType = onCreateObjectType(newTypeName.trim(), newTypeEmoji)
+                              const person = onCreatePerson(trimmedFilter, newType.id)
+                              insertMention(person.name)
+                              setShowNewTypeForm(false)
+                            }
+                            if (e.key === 'Escape') { setShowNewTypeForm(false) }
+                          }}
+                        />
+                      </div>
+                      <div className="flex flex-wrap gap-1">
+                        {NEW_TYPE_EMOJIS.map(em => (
+                          <button
+                            key={em}
+                            className={cn("w-7 h-7 flex items-center justify-center rounded hover:bg-accent text-base transition-colors", newTypeEmoji === em && 'bg-accent ring-1 ring-primary/30')}
+                            onMouseDown={e => { e.preventDefault(); setNewTypeEmoji(em) }}
+                          >
+                            {em}
+                          </button>
+                        ))}
+                      </div>
+                      <div className="flex items-center gap-2 pt-1">
+                        <button
+                          className="flex-1 text-xs px-2 py-1.5 bg-primary text-primary-foreground rounded hover:bg-primary/90 transition-colors font-medium"
+                          onMouseDown={e => {
+                            e.preventDefault()
+                            if (!newTypeName.trim()) return
+                            const newType = onCreateObjectType(newTypeName.trim(), newTypeEmoji)
+                            const person = onCreatePerson(trimmedFilter, newType.id)
+                            insertMention(person.name)
+                            setShowNewTypeForm(false)
+                          }}
+                        >
+                          Create {newTypeEmoji} {newTypeName || '…'}
+                        </button>
+                        <button
+                          className="text-xs px-2 py-1.5 text-muted-foreground hover:text-foreground transition-colors"
+                          onMouseDown={e => { e.preventDefault(); setShowNewTypeForm(false) }}
+                        >
+                          Cancel
+                        </button>
+                      </div>
+                    </div>
+                  )}
                 </>
               )}
             </div>
@@ -1635,6 +1709,7 @@ function NoteEditor({ note, allTags, onChange, onDelete, people, onCreatePerson,
   people: Person[]; onCreatePerson: (name: string, typeId?: string) => Person
   onNavigateTo: (noteId: string) => void
   objectTypes: ObjectType[]
+  onCreateObjectType: (name: string, emoji: string) => ObjectType
 }) {
   const [focusedBlockId, setFocusedBlockId] = useState<string | null>(null)
   const [selectedBlockIds, setSelectedBlockIds] = useState<Set<string>>(new Set())
@@ -2364,6 +2439,7 @@ function NoteEditor({ note, allTags, onChange, onDelete, people, onCreatePerson,
               onCreatePerson={onCreatePerson}
               onNavigateTo={onNavigateTo}
               objectTypes={objectTypes}
+              onCreateObjectType={onCreateObjectType}
               onFocusPrev={focusPrevBlock}
               onFocusNext={focusNextBlock}
               onReorderDragStart={startReorderDrag}
@@ -2521,20 +2597,26 @@ function Sidebar({ notes, activeId, search, onSearch, onSelect, onCreate, active
           )}
         </div>
 
-        {/* Objects section — grouped by type */}
-        {people.length > 0 && (() => {
+        {/* Objects section — built-in types always visible, custom types when populated */}
+        {(() => {
           const allTypes = [...BUILTIN_OBJECT_TYPES, ...objectTypes]
-          const typesWithObjects = allTypes.filter(t => people.some(p => (p.typeId ?? 'person') === t.id))
-          if (typesWithObjects.length === 0) return null
+          // Built-in types always shown; custom types only if they have objects
+          const visibleTypes = allTypes.filter(t =>
+            t.isBuiltin || people.some(p => (p.typeId ?? 'person') === t.id)
+          )
+          if (visibleTypes.length === 0) return null
           return (
             <div className="px-3 pt-2 pb-2 border-t mt-2 space-y-3">
-              {typesWithObjects.map(objType => {
+              {visibleTypes.map(objType => {
                 const typeObjects = people.filter(p => (p.typeId ?? 'person') === objType.id)
                 return (
                   <div key={objType.id}>
                     <div className="flex items-center gap-1.5 mb-1">
                       <span className="text-[11px] leading-none">{objType.emoji}</span>
-                      <span className="text-[10px] font-semibold text-foreground/60 uppercase tracking-wider">{objType.name}</span>
+                      <span className="text-[10px] font-semibold text-foreground/60 uppercase tracking-wider flex-1">{objType.name}</span>
+                      {typeObjects.length > 0 && (
+                        <span className="text-[10px] text-muted-foreground/40 tabular-nums">{typeObjects.length}</span>
+                      )}
                     </div>
                     <div className="space-y-0.5">
                       {typeObjects.map(person => (
@@ -2560,6 +2642,11 @@ function Sidebar({ notes, activeId, search, onSearch, onSelect, onCreate, active
                           </button>
                         </div>
                       ))}
+                      {typeObjects.length === 0 && (
+                        <div className="px-2 py-0.5 text-[11px] text-muted-foreground/35 italic">
+                          No {objType.name.toLowerCase()}s yet
+                        </div>
+                      )}
                     </div>
                   </div>
                 )
@@ -2715,6 +2802,32 @@ export default function NotesPage() {
   }
 
   function updateNote(id: string, patch: Partial<Note>) {
+    // When a person-linked note's title changes, propagate rename to all @mentions
+    if (patch.title !== undefined) {
+      const personForNote = people.find(p => p.noteId === id)
+      if (personForNote && patch.title !== personForNote.name) {
+        const oldName = personForNote.name
+        const newName = patch.title
+        // Update the person's stored name
+        setPeople(prev => prev.map(p => p.id === personForNote.id ? { ...p, name: newName } : p))
+        // Replace @OldName with @NewName in every note's block content
+        const escOld = oldName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+        const mentionRe = new RegExp('@' + escOld, 'g')
+        setNotes(prev => prev.map(n => ({
+          ...n,
+          ...(n.id === id ? patch : {}),
+          blocks: n.blocks.map(b => ({
+            ...b,
+            content: b.content.replace(mentionRe, '@' + newName),
+            ...(b.expandedContent != null
+              ? { expandedContent: b.expandedContent.replace(mentionRe, '@' + newName) }
+              : {}),
+          })),
+          updatedAt: Date.now(),
+        })))
+        return
+      }
+    }
     setNotes(prev => prev.map(n => n.id === id ? { ...n, ...patch, updatedAt: Date.now() } : n))
   }
 
@@ -2808,6 +2921,7 @@ export default function NotesPage() {
                   onCreatePerson={createPerson}
                   onNavigateTo={id => setActiveId(id)}
                   objectTypes={customObjectTypes}
+                  onCreateObjectType={createObjectType}
                 />
               ) : (
                 <div className="flex flex-col items-center justify-center h-full gap-4 text-muted-foreground">
