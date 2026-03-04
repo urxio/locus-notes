@@ -1669,8 +1669,8 @@ function BlockItem({ block, index, listIndex, numBlocks, isFocused, isSelected, 
               )}
               {!isFocused && (
                 <div
-                  className="outline-none min-h-[1.4em] break-words w-full cursor-text mt-1 text-sm text-foreground/80 dark:text-foreground/70"
-                  style={{ whiteSpace: 'pre-wrap' }}
+                  className={cn("outline-none min-h-[1.4em] break-words w-full cursor-text", 'text-base leading-relaxed', block.checked && 'line-through text-muted-foreground/60')}
+                  style={{ wordBreak: 'break-word', whiteSpace: 'pre-wrap' }}
                   onClick={(e) => {
                     const target = e.target as HTMLElement
                     if (target.matches('[data-mention]')) {
@@ -1682,7 +1682,7 @@ function BlockItem({ block, index, listIndex, numBlocks, isFocused, isSelected, 
                     }
                     onFocus(block.id)
                   }}
-                  dangerouslySetInnerHTML={{ __html: block.expandedContent ? injectMentionsIntoHtml(block.expandedContent, people) : '' }}
+                  dangerouslySetInnerHTML={{ __html: block.content ? injectMentionsIntoHtml(block.content, people) : '' }}
                 />
               )}
             </div>
@@ -1717,8 +1717,31 @@ function BlockItem({ block, index, listIndex, numBlocks, isFocused, isSelected, 
                   onInput={handleBodyInput}
                   onKeyDown={handleBodyKeyDown}
                   onFocus={() => onFocus(block.id)}
-                  style={{ wordBreak: 'break-word', whiteSpace: 'pre-wrap' }}
+                  style={{ wordBreak: 'break-word', whiteSpace: 'pre-wrap', display: isFocused ? undefined : 'none' }}
                 />
+                {!isFocused && (
+                  <div
+                    className={cn(
+                      baseEditable,
+                      'text-base leading-relaxed text-foreground/75 cursor-text',
+                      !block.expandedContent && 'empty:before:content-[attr(data-placeholder)] empty:before:text-muted-foreground/40'
+                    )}
+                    data-placeholder="Toggle content…"
+                    style={{ whiteSpace: 'pre-wrap' }}
+                    onClick={(e) => {
+                      const target = e.target as HTMLElement
+                      if (target.matches('[data-mention]')) {
+                        e.stopPropagation()
+                        const name = target.getAttribute('data-mention')
+                        const person = people.find(p => p.name.toLowerCase() === name?.toLowerCase())
+                        if (person?.noteId && onNavigateTo) onNavigateTo(person.noteId)
+                        return
+                      }
+                      onFocus(block.id)
+                    }}
+                    dangerouslySetInnerHTML={{ __html: block.expandedContent ? injectMentionsIntoHtml(block.expandedContent, people) : '' }}
+                  />
+                )}
               </div>
             )}
           </div>
