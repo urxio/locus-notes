@@ -97,19 +97,19 @@ const BLOCK_PLACEHOLDERS: Record<BlockType, string> = {
 }
 
 const SLASH_MENU_ITEMS: { type: BlockType; label: string; shortcut?: string }[] = [
-  { type: 'p',        label: 'Paragraph',    shortcut: '' },
-  { type: 'h1',       label: 'Heading 1',    shortcut: '#' },
-  { type: 'h2',       label: 'Heading 2',    shortcut: '##' },
-  { type: 'h3',       label: 'Heading 3',    shortcut: '###' },
-  { type: 'toggle',   label: 'Toggle',       shortcut: '>>' },
-  { type: 'bullet',   label: 'Bullet List',  shortcut: '-' },
-  { type: 'numbered', label: 'Numbered List',shortcut: '1.' },
-  { type: 'quote',    label: 'Quote',        shortcut: '>' },
-  { type: 'code',     label: 'Code Block',   shortcut: '```' },
-  { type: 'table',    label: 'Table',        shortcut: 'table' },
-  { type: 'todo',     label: 'To-do',        shortcut: '[]' },
-  { type: 'divider',  label: 'Divider',      shortcut: '---' },
-  { type: 'date',     label: 'Date',         shortcut: '' },
+  { type: 'p', label: 'Paragraph', shortcut: '' },
+  { type: 'h1', label: 'Heading 1', shortcut: '#' },
+  { type: 'h2', label: 'Heading 2', shortcut: '##' },
+  { type: 'h3', label: 'Heading 3', shortcut: '###' },
+  { type: 'toggle', label: 'Toggle', shortcut: '>>' },
+  { type: 'bullet', label: 'Bullet List', shortcut: '-' },
+  { type: 'numbered', label: 'Numbered List', shortcut: '1.' },
+  { type: 'quote', label: 'Quote', shortcut: '>' },
+  { type: 'code', label: 'Code Block', shortcut: '```' },
+  { type: 'table', label: 'Table', shortcut: 'table' },
+  { type: 'todo', label: 'To-do', shortcut: '[]' },
+  { type: 'divider', label: 'Divider', shortcut: '---' },
+  { type: 'date', label: 'Date', shortcut: '' },
 ]
 
 // ─── Seed Data ─────────────────────────────────────────────────────────────────
@@ -170,13 +170,13 @@ function loadObjectTypes(): ObjectType[] {
   try {
     const raw = localStorage.getItem(OBJECT_TYPES_KEY)
     if (raw) return JSON.parse(raw)
-  } catch {}
+  } catch { }
   return []
 }
 
 function saveObjectTypes(types: ObjectType[]) {
   if (typeof window === 'undefined') return
-  try { localStorage.setItem(OBJECT_TYPES_KEY, JSON.stringify(types)) } catch {}
+  try { localStorage.setItem(OBJECT_TYPES_KEY, JSON.stringify(types)) } catch { }
 }
 const PERSON_EMOJIS = ['👤', '👩', '👨', '🧑', '👩‍💻', '👨‍💻', '🧑‍🎨', '👩‍🎨', '🧑‍🏫', '👩‍🏫', '👨‍🏫', '🧑‍⚕️']
 
@@ -185,13 +185,13 @@ function loadPeople(): Person[] {
   try {
     const raw = localStorage.getItem(PEOPLE_STORAGE_KEY)
     if (raw) return JSON.parse(raw)
-  } catch {}
+  } catch { }
   return []
 }
 
 function savePeople(people: Person[]) {
   if (typeof window === 'undefined') return
-  try { localStorage.setItem(PEOPLE_STORAGE_KEY, JSON.stringify(people)) } catch {}
+  try { localStorage.setItem(PEOPLE_STORAGE_KEY, JSON.stringify(people)) } catch { }
 }
 
 function mkPerson(name: string): Person {
@@ -207,13 +207,13 @@ function loadNotes(): Note[] {
   try {
     const raw = localStorage.getItem(STORAGE_KEY)
     if (raw) return JSON.parse(raw)
-  } catch {}
+  } catch { }
   return SEED_NOTES
 }
 
 function saveNotes(notes: Note[]) {
   if (typeof window === 'undefined') return
-  try { localStorage.setItem(STORAGE_KEY, JSON.stringify(notes)) } catch {}
+  try { localStorage.setItem(STORAGE_KEY, JSON.stringify(notes)) } catch { }
 }
 
 function mkNote(): Note {
@@ -308,7 +308,7 @@ function buildGraph(notes: Note[], people: Person[], w: number, h: number): { no
         const name = m.slice(1).toLowerCase()
         const personNoteId = personNoteMap.get(name)
         if (personNoteId && personNoteId !== note.id &&
-            !edges.some(e => e.source === `note:${note.id}` && e.target === `note:${personNoteId}`)) {
+          !edges.some(e => e.source === `note:${note.id}` && e.target === `note:${personNoteId}`)) {
           edges.push({ source: `note:${note.id}`, target: `note:${personNoteId}` })
         }
       })
@@ -590,17 +590,17 @@ function GraphPanel({ notes, people, activeNoteId, onSelectNote }: {
 
 // ─── DateBlock ────────────────────────────────────────────────────────────────
 
-const MONTH_NAMES = ['January','February','March','April','May','June',
-                     'July','August','September','October','November','December']
-const DAY_NAMES   = ['Su','Mo','Tu','We','Th','Fr','Sa']
+const MONTH_NAMES = ['January', 'February', 'March', 'April', 'May', 'June',
+  'July', 'August', 'September', 'October', 'November', 'December']
+const DAY_NAMES = ['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa']
 
 function toIso(y: number, m: number, d: number) {
   return `${y}-${String(m + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`
 }
 
 function DateBlock({ block, onUpdate }: { block: Block; onUpdate: (id: string, patch: Partial<Block>) => void }) {
-  const [open, setOpen]           = useState(false)
-  const [viewYear,  setViewYear]  = useState(0)
+  const [open, setOpen] = useState(false)
+  const [viewYear, setViewYear] = useState(0)
   const [viewMonth, setViewMonth] = useState(0)
   const containerRef = useRef<HTMLDivElement>(null)
 
@@ -652,13 +652,13 @@ function DateBlock({ block, onUpdate }: { block: Block; onUpdate: (id: string, p
   }
 
   // Build the calendar grid cells
-  const daysInMonth    = new Date(viewYear, viewMonth + 1, 0).getDate()
+  const daysInMonth = new Date(viewYear, viewMonth + 1, 0).getDate()
   const firstDayOfWeek = new Date(viewYear, viewMonth, 1).getDay()
   const cells: (number | null)[] = [
     ...Array(firstDayOfWeek).fill(null),
     ...Array.from({ length: daysInMonth }, (_, i) => i + 1),
   ]
-  const t        = new Date()
+  const t = new Date()
   const todayIso = toIso(t.getFullYear(), t.getMonth(), t.getDate())
 
   return (
@@ -705,9 +705,9 @@ function DateBlock({ block, onUpdate }: { block: Block; onUpdate: (id: string, p
           <div className="grid grid-cols-7 gap-0.5">
             {cells.map((day, i) => {
               if (!day) return <div key={i} />
-              const iso        = toIso(viewYear, viewMonth, day)
+              const iso = toIso(viewYear, viewMonth, day)
               const isSelected = iso === dateVal
-              const isToday    = iso === todayIso
+              const isToday = iso === todayIso
               return (
                 <button key={i} onClick={() => selectDay(day)}
                   className={cn(
@@ -846,7 +846,7 @@ function BlockItem({ block, index, listIndex, numBlocks, isFocused, isSelected, 
       range.collapse(true)
       sel?.removeAllRanges()
       sel?.addRange(range)
-    } catch {}
+    } catch { }
   }, [isFocused, block.type])
 
   const filteredMenu = SLASH_MENU_ITEMS.filter(item =>
@@ -944,7 +944,7 @@ function BlockItem({ block, index, listIndex, numBlocks, isFocused, isSelected, 
           post.setEnd(range.endContainer, range.endOffset)
           return post.toString().length
         })()
-      } catch {}
+      } catch { }
     }
 
     const existing = el.textContent || ''
@@ -968,7 +968,7 @@ function BlockItem({ block, index, listIndex, numBlocks, isFocused, isSelected, 
           sel?.removeAllRanges()
           sel?.addRange(range)
         }
-      } catch {}
+      } catch { }
       onUpdate(block.id, { content: newContent })
     } else {
       // Multi-line paste: current block gets before + first line
@@ -1061,10 +1061,10 @@ function BlockItem({ block, index, listIndex, numBlocks, isFocused, isSelected, 
           pre.setStart(el, 0)
           pre.setEnd(range.startContainer, range.startOffset)
           cursorPos = pre.toString().length
-        } catch {}
+        } catch { }
       }
       const before = text.slice(0, cursorPos)
-      const after  = text.slice(cursorPos)
+      const after = text.slice(cursorPos)
 
       // Keep only the text before the cursor in the current block
       el.textContent = before
@@ -1077,7 +1077,8 @@ function BlockItem({ block, index, listIndex, numBlocks, isFocused, isSelected, 
     }
 
     if (e.key === 'Backspace') {
-      if (!text) {
+      const cleanText = text.replace(/[\u200B-\u200D\uFEFF]/g, '')
+      if (!cleanText) {
         e.preventDefault()
         if (numBlocks > 1) {
           // Any empty block can be deleted directly (matches Notion)
@@ -1096,11 +1097,11 @@ function BlockItem({ block, index, listIndex, numBlocks, isFocused, isSelected, 
         let cursorAtStart = false
         try {
           const range = sel.getRangeAt(0)
-          const pre   = document.createRange()
+          const pre = document.createRange()
           pre.setStart(e.currentTarget, 0)
           pre.setEnd(range.startContainer, range.startOffset)
           cursorAtStart = pre.toString().length === 0
-        } catch {}
+        } catch { }
         if (cursorAtStart) {
           e.preventDefault()
           onMergePrev(block.id, text)
@@ -1131,7 +1132,7 @@ function BlockItem({ block, index, listIndex, numBlocks, isFocused, isSelected, 
         pre.setStart(el, 0)
         pre.setEnd(range.startContainer, range.startOffset)
         cursorPos = pre.toString().length
-      } catch {}
+      } catch { }
     }
     // Replace @filter with @personName
     const mentionText = `@${personName}`
@@ -1149,7 +1150,7 @@ function BlockItem({ block, index, listIndex, numBlocks, isFocused, isSelected, 
         sel?.removeAllRanges()
         sel?.addRange(range)
       }
-    } catch {}
+    } catch { }
     onUpdate(block.id, { content: newText })
     setShowMentionMenu(false)
     setMentionFilter('')
@@ -1161,9 +1162,9 @@ function BlockItem({ block, index, listIndex, numBlocks, isFocused, isSelected, 
   // the toggle opens) without including block.expandedContent in deps (which
   // would reset the caret on every keystroke).
   const bodyCallbackRef = useCallback((el: HTMLDivElement | null) => {
-    ;(bodyRef as React.MutableRefObject<HTMLDivElement | null>).current = el
+    ; (bodyRef as React.MutableRefObject<HTMLDivElement | null>).current = el
     if (el) el.textContent = block.expandedContent ?? ''
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [block.open, block.type]) // re-initialise only when open/type changes
 
   function handleBodyInput(e: React.FormEvent<HTMLDivElement>) {
@@ -1186,8 +1187,8 @@ function BlockItem({ block, index, listIndex, numBlocks, isFocused, isSelected, 
         ref.current.focus()
         try {
           const range = document.createRange()
-          const sel   = window.getSelection()
-          const node  = ref.current.firstChild
+          const sel = window.getSelection()
+          const node = ref.current.firstChild
           if (node && node.nodeType === Node.TEXT_NODE) {
             range.setStart(node, (node as Text).length)
           } else {
@@ -1196,7 +1197,7 @@ function BlockItem({ block, index, listIndex, numBlocks, isFocused, isSelected, 
           range.collapse(true)
           sel?.removeAllRanges()
           sel?.addRange(range)
-        } catch {}
+        } catch { }
       }, 0)
       return
     }
@@ -1735,7 +1736,7 @@ function NoteEditor({ note, allTags, onChange, onDelete, people, onCreatePerson,
     if (note.blocks.length === 1 && !note.blocks[0].content) {
       setFocusedBlockId(note.blocks[0].id)
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   function updateBlock(id: string, patch: Partial<Block>) {
@@ -1788,7 +1789,7 @@ function NoteEditor({ note, allTags, onChange, onDelete, people, onCreatePerson,
     setReorderDragId(blockId)
     setFocusedBlockId(null)
     setSelectedBlockIds(new Set())
-    ;(document.activeElement as HTMLElement)?.blur()
+      ; (document.activeElement as HTMLElement)?.blur()
   }
 
   useEffect(() => {
@@ -1897,8 +1898,8 @@ function NoteEditor({ note, allTags, onChange, onDelete, people, onCreatePerson,
     el.focus()
     try {
       const range = document.createRange()
-      const sel   = window.getSelection()
-      const node  = el.firstChild
+      const sel = window.getSelection()
+      const node = el.firstChild
       if (node && node.nodeType === Node.TEXT_NODE) {
         const pos = Math.min(p.pos, node.textContent?.length ?? 0)
         range.setStart(node, pos)
@@ -1908,7 +1909,7 @@ function NoteEditor({ note, allTags, onChange, onDelete, people, onCreatePerson,
       range.collapse(true)
       sel?.removeAllRanges()
       sel?.addRange(range)
-    } catch {}
+    } catch { }
   }, [focusedBlockId])
 
   function deleteSelectedBlocks() {
@@ -1998,9 +1999,9 @@ function NoteEditor({ note, allTags, onChange, onDelete, people, onCreatePerson,
 
   // ── Drag-select refs ────────────────────────────────────────────────────────
   // Always-fresh view of blocks list (needed inside window event handlers)
-  const noteBlocksRef     = useRef(note.blocks)
-  const isDraggingRef     = useRef(false)
-  const dragAnchorIdxRef  = useRef<number | null>(null)
+  const noteBlocksRef = useRef(note.blocks)
+  const isDraggingRef = useRef(false)
+  const dragAnchorIdxRef = useRef<number | null>(null)
 
   useEffect(() => { noteBlocksRef.current = note.blocks }, [note.blocks])
 
@@ -2027,28 +2028,28 @@ function NoteEditor({ note, allTags, onChange, onDelete, people, onCreatePerson,
       }
 
       const startBlockEl = getBlockEl(range.startContainer)
-      const endBlockEl   = getBlockEl(range.endContainer)
+      const endBlockEl = getBlockEl(range.endContainer)
 
       // Only act on genuine cross-block selections
       if (!startBlockEl || !endBlockEl || startBlockEl === endBlockEl) return false
 
       const startBlockId = startBlockEl.getAttribute('data-block-id')!
-      const endBlockId   = endBlockEl.getAttribute('data-block-id')!
+      const endBlockId = endBlockEl.getAttribute('data-block-id')!
 
-      const blocks  = noteBlocksRef.current
+      const blocks = noteBlocksRef.current
       const startIdx = blocks.findIndex(b => b.id === startBlockId)
-      const endIdx   = blocks.findIndex(b => b.id === endBlockId)
+      const endIdx = blocks.findIndex(b => b.id === endBlockId)
       if (startIdx === -1 || endIdx === -1) return false
 
       // Normalise so fromIdx < toIdx (handle backward selections)
       const forward = startIdx <= endIdx
-      const [fromIdx, toIdx]         = forward ? [startIdx, endIdx]             : [endIdx, startIdx]
-      const [fromEl,  toEl]          = forward ? [startBlockEl, endBlockEl]     : [endBlockEl, startBlockEl]
-      const [fromNode, fromOff]      = forward
+      const [fromIdx, toIdx] = forward ? [startIdx, endIdx] : [endIdx, startIdx]
+      const [fromEl, toEl] = forward ? [startBlockEl, endBlockEl] : [endBlockEl, startBlockEl]
+      const [fromNode, fromOff] = forward
         ? [range.startContainer, range.startOffset]
-        : [range.endContainer,   range.endOffset]
-      const [toNode,  toOff]         = forward
-        ? [range.endContainer,   range.endOffset]
+        : [range.endContainer, range.endOffset]
+      const [toNode, toOff] = forward
+        ? [range.endContainer, range.endOffset]
         : [range.startContainer, range.startOffset]
 
       // Get contenteditable within a block (fall back to block el itself)
@@ -2057,11 +2058,11 @@ function NoteEditor({ note, allTags, onChange, onDelete, people, onCreatePerson,
       }
 
       const fromEditable = getEditable(fromEl)
-      const toEditable   = getEditable(toEl)
+      const toEditable = getEditable(toEl)
 
       // Measure plain-text offset from start of each editable to the range endpoint
       let startTextOffset = 0
-      let endTextOffset   = (toEditable.textContent || '').length
+      let endTextOffset = (toEditable.textContent || '').length
 
       try {
         const r = document.createRange()
@@ -2078,20 +2079,20 @@ function NoteEditor({ note, allTags, onChange, onDelete, people, onCreatePerson,
       } catch { endTextOffset = (toEditable.textContent || '').length }
 
       const fromBlock = blocks[fromIdx]
-      const toBlock   = blocks[toIdx]
+      const toBlock = blocks[toIdx]
 
       // Merge: keep text before cursor in start block + optional char + text after cursor in end block
       const mergedContent = fromBlock.content.slice(0, startTextOffset)
-                          + (charToInsert ?? '')
-                          + toBlock.content.slice(endTextOffset)
+        + (charToInsert ?? '')
+        + toBlock.content.slice(endTextOffset)
       const cursorPos = startTextOffset + (charToInsert ? charToInsert.length : 0)
 
       // Build new blocks array: replace fromBlock with merged, drop everything from fromIdx+1..toIdx
       const newBlocks: Block[] = []
       for (let i = 0; i < blocks.length; i++) {
-        if (i === fromIdx)                     newBlocks.push({ ...fromBlock, content: mergedContent })
-        else if (i > fromIdx && i <= toIdx)    { /* deleted */ }
-        else                                   newBlocks.push(blocks[i])
+        if (i === fromIdx) newBlocks.push({ ...fromBlock, content: mergedContent })
+        else if (i > fromIdx && i <= toIdx) { /* deleted */ }
+        else newBlocks.push(blocks[i])
       }
 
       // Synchronously update the start-block's DOM before React re-renders.
@@ -2116,7 +2117,7 @@ function NoteEditor({ note, allTags, onChange, onDelete, people, onCreatePerson,
         try {
           const textNode = el.firstChild
           if (textNode && textNode.nodeType === Node.TEXT_NODE) {
-            const r   = document.createRange()
+            const r = document.createRange()
             const pos = Math.min(cursorPos, textNode.textContent?.length ?? 0)
             r.setStart(textNode, pos)
             r.collapse(true)
@@ -2132,7 +2133,7 @@ function NoteEditor({ note, allTags, onChange, onDelete, people, onCreatePerson,
             s?.removeAllRanges()
             s?.addRange(r)
           }
-        } catch {}
+        } catch { }
       }, 0)
 
       return true
@@ -2141,9 +2142,9 @@ function NoteEditor({ note, allTags, onChange, onDelete, people, onCreatePerson,
 
   // Called by BlockItem's grip/margin onMouseDown
   function startDragSelect(blockId: string, blockIdx: number) {
-    isDraggingRef.current    = true
+    isDraggingRef.current = true
     dragAnchorIdxRef.current = blockIdx
-    ;(document.activeElement as HTMLElement)?.blur()
+      ; (document.activeElement as HTMLElement)?.blur()
     setFocusedBlockId(null)
     setSelectedBlockIds(new Set([blockId]))
     setLastSelectedIdx(blockIdx)
@@ -2211,8 +2212,8 @@ function NoteEditor({ note, allTags, onChange, onDelete, people, onCreatePerson,
       const caret = caretAt(e.clientX, e.clientY)
       if (!caret) return
 
-      state.active       = true
-      state.anchorNode   = caret.node
+      state.active = true
+      state.anchorNode = caret.node
       state.anchorOffset = caret.offset
       state.anchorBlockEl = blockEl
     }
@@ -2240,7 +2241,7 @@ function NoteEditor({ note, allTags, onChange, onDelete, people, onCreatePerson,
           state.anchorNode!, state.anchorOffset,
           caret.node, caret.offset
         )
-      } catch {}
+      } catch { }
     }
 
     function onMouseUp() {
@@ -2249,11 +2250,11 @@ function NoteEditor({ note, allTags, onChange, onDelete, people, onCreatePerson,
 
     window.addEventListener('mousedown', onMouseDown)
     window.addEventListener('mousemove', onMouseMove)
-    window.addEventListener('mouseup',   onMouseUp)
+    window.addEventListener('mouseup', onMouseUp)
     return () => {
       window.removeEventListener('mousedown', onMouseDown)
       window.removeEventListener('mousemove', onMouseMove)
-      window.removeEventListener('mouseup',   onMouseUp)
+      window.removeEventListener('mouseup', onMouseUp)
     }
   }, [])
 
@@ -2358,13 +2359,13 @@ function NoteEditor({ note, allTags, onChange, onDelete, people, onCreatePerson,
               </Button>
               <Tooltip>
                 <TooltipTrigger asChild>
-                  <Button 
-                    variant="destructive" 
+                  <Button
+                    variant="destructive"
                     size="sm"
                     className="h-8 gap-2"
-                    onClick={() => { 
+                    onClick={() => {
                       setFocusedBlockId(null)
-                      deleteSelectedBlocks() 
+                      deleteSelectedBlocks()
                     }}>
                     <Trash2 className="w-3.5 h-3.5" />
                     Delete {selectedBlockIds.size > 1 ? selectedBlockIds.size + ' blocks' : 'block'}
@@ -2438,34 +2439,34 @@ function NoteEditor({ note, allTags, onChange, onDelete, people, onCreatePerson,
                 }
               }
               return (
-              <BlockItem
-                key={block.id}
-                block={block}
-                index={index}
-                listIndex={listIndex}
-                numBlocks={note.blocks.length}
-                isFocused={focusedBlockId === block.id}
-                isSelected={selectedBlockIds.has(block.id)}
-                onUpdate={updateBlock}
-                onInsert={insertBlockAfter}
-                onDelete={deleteBlock}
-                onMergePrev={mergePrevBlock}
-                onFocus={setFocusedBlockId}
-                onSelect={selectBlock}
-                onDragSelectStart={startDragSelect}
-                onMouseEnterBlock={extendDragSelect}
-                onPasteLines={insertPastedLines}
-              people={people}
-              onCreatePerson={onCreatePerson}
-              onNavigateTo={onNavigateTo}
-              objectTypes={objectTypes}
-              onCreateObjectType={onCreateObjectType}
-              onFocusPrev={focusPrevBlock}
-              onFocusNext={focusNextBlock}
-              onReorderDragStart={startReorderDrag}
-              isBeingDragged={reorderDragId === block.id}
-              showDropIndicatorAbove={reorderDropIdx === index}
-              />
+                <BlockItem
+                  key={block.id}
+                  block={block}
+                  index={index}
+                  listIndex={listIndex}
+                  numBlocks={note.blocks.length}
+                  isFocused={focusedBlockId === block.id}
+                  isSelected={selectedBlockIds.has(block.id)}
+                  onUpdate={updateBlock}
+                  onInsert={insertBlockAfter}
+                  onDelete={deleteBlock}
+                  onMergePrev={mergePrevBlock}
+                  onFocus={setFocusedBlockId}
+                  onSelect={selectBlock}
+                  onDragSelectStart={startDragSelect}
+                  onMouseEnterBlock={extendDragSelect}
+                  onPasteLines={insertPastedLines}
+                  people={people}
+                  onCreatePerson={onCreatePerson}
+                  onNavigateTo={onNavigateTo}
+                  objectTypes={objectTypes}
+                  onCreateObjectType={onCreateObjectType}
+                  onFocusPrev={focusPrevBlock}
+                  onFocusNext={focusNextBlock}
+                  onReorderDragStart={startReorderDrag}
+                  isBeingDragged={reorderDragId === block.id}
+                  showDropIndicatorAbove={reorderDropIdx === index}
+                />
               )
             })}
           </div>
@@ -2784,8 +2785,8 @@ export default function NotesPage() {
       tags: [],
     }
     const person: Person = { ...mkPerson(name), noteId: personNote.id, typeId }
-    // Store personId on the note so we can identify it as a person page
-    ;(personNote as any).personId = person.id
+      // Store personId on the note so we can identify it as a person page
+      ; (personNote as any).personId = person.id
     setNotes(prev => [personNote, ...prev])
     setPeople(prev => [...prev, person])
     return person
