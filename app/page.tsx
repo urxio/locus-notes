@@ -1704,7 +1704,7 @@ function formatDate(ts: number): string {
 
 // ─── NoteEditor ───────────────────────────────────────────────────────────────
 
-function NoteEditor({ note, allTags, onChange, onDelete, people, onCreatePerson, onNavigateTo, objectTypes }: {
+function NoteEditor({ note, allTags, onChange, onDelete, people, onCreatePerson, onNavigateTo, objectTypes, onCreateObjectType }: {
   note: Note; allTags: string[]; onChange: (patch: Partial<Note>) => void; onDelete: () => void
   people: Person[]; onCreatePerson: (name: string, typeId?: string) => Person
   onNavigateTo: (noteId: string) => void
