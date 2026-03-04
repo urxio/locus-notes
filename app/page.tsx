@@ -18,7 +18,7 @@ import { ThemeSwitcher } from "@/components/theme-switcher"
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
-type BlockType = 'h1' | 'h2' | 'h3' | 'p' | 'bullet' | 'numbered' | 'quote' | 'code' | 'divider' | 'todo' | 'date' | 'toggle'
+type BlockType = 'h1' | 'h2' | 'h3' | 'p' | 'bullet' | 'numbered' | 'quote' | 'code' | 'divider' | 'todo' | 'date' | 'toggle' | 'table'
 
 interface Block {
   id: string
@@ -68,13 +68,14 @@ const BLOCK_ICONS: Record<BlockType, React.ReactNode> = {
   todo: <CheckSquare className="w-3.5 h-3.5" />,
   date: <Calendar className="w-3.5 h-3.5" />,
   toggle: <ChevronRight className="w-3.5 h-3.5" />,
+  table: <List className="w-3.5 h-3.5" />,
 }
 
 const BLOCK_LABELS: Record<BlockType, string> = {
   h1: 'Heading 1', h2: 'Heading 2', h3: 'Heading 3', p: 'Paragraph',
   bullet: 'Bullet List', numbered: 'Numbered List', quote: 'Quote',
   code: 'Code Block', divider: 'Divider', todo: 'To-do', date: 'Date',
-  toggle: 'Toggle',
+  toggle: 'Toggle', table: 'Table',
 }
 
 const BLOCK_PLACEHOLDERS: Record<BlockType, string> = {
@@ -82,7 +83,7 @@ const BLOCK_PLACEHOLDERS: Record<BlockType, string> = {
   p: "Write something, or type '/' for commands…",
   bullet: 'List item', numbered: 'List item',
   quote: 'Quote…', code: 'Code…', divider: '', todo: 'To-do', date: '',
-  toggle: 'Toggle header…',
+  toggle: 'Toggle header…', table: 'Table (use | to separate cells)…',
 }
 
 const SLASH_MENU_ITEMS: { type: BlockType; label: string; shortcut?: string }[] = [
@@ -95,6 +96,7 @@ const SLASH_MENU_ITEMS: { type: BlockType; label: string; shortcut?: string }[] 
   { type: 'numbered', label: 'Numbered List',shortcut: '1.' },
   { type: 'quote',    label: 'Quote',        shortcut: '>' },
   { type: 'code',     label: 'Code Block',   shortcut: '```' },
+  { type: 'table',    label: 'Table',        shortcut: 'table' },
   { type: 'todo',     label: 'To-do',        shortcut: '[]' },
   { type: 'divider',  label: 'Divider',      shortcut: '---' },
   { type: 'date',     label: 'Date',         shortcut: '' },
@@ -205,7 +207,13 @@ function mkBlock(type: BlockType = 'p'): Block {
 function normalizeBlocks(blocks: Block[]): Block[] {
   const result: Block[] = []
   for (const b of blocks) {
-    if (b.type !== 'code' && b.type !== 'date' && b.type !== 'toggle' && b.content.includes('\n')) {
+    if (
+      b.type !== 'code' &&
+      b.type !== 'date' &&
+      b.type !== 'toggle' &&
+      b.type !== 'table' &&
+      b.content.includes('\n')
+    ) {
       const lines = b.content.split(/\r?\n/)
       result.push({ ...b, content: lines[0] })
       for (let i = 1; i < lines.length; i++) {
@@ -1108,7 +1116,13 @@ function BlockItem({ block, index, listIndex, numBlocks, isFocused, isSelected, 
 
   function applyMenuItem(type: BlockType) {
     if (ref.current) ref.current.textContent = ''
-    const content = type === 'date' ? new Date().toISOString().split('T')[0] : ''
+    let content = ''
+    if (type === 'date') {
+      content = new Date().toISOString().split('T')[0]
+    } else if (type === 'table') {
+      // Default 3×3 table: rows separated by \n, cells by |
+      content = '   |   |   \n   |   |   \n   |   |   '
+    }
     onUpdate(block.id, { type, content })
     setShowMenu(false)
     setMenuFilter('')
@@ -1238,6 +1252,7 @@ function BlockItem({ block, index, listIndex, numBlocks, isFocused, isSelected, 
     todo: 'text-base leading-relaxed',
     date: '',
     toggle: 'text-base font-medium leading-relaxed',
+    table: 'text-sm font-mono bg-muted/60 dark:bg-muted rounded-md px-3 py-2 text-foreground/90',
   }
 
   const editableEl = (
@@ -1347,6 +1362,46 @@ function BlockItem({ block, index, listIndex, numBlocks, isFocused, isSelected, 
                 />
               </div>
             )}
+          </div>
+        ) : block.type === 'table' ? (
+          <div className="flex-1">
+            <div className="inline-block border rounded-md overflow-hidden bg-background/80">
+              <table className="border-collapse text-sm">
+                <tbody>
+                  {block.content.split('\n').map((row, rowIdx) => {
+                    const cells = row.split('|')
+                    return (
+                      <tr key={rowIdx}>
+                        {cells.map((cell, colIdx) => (
+                          <td
+                            key={colIdx}
+                            className="border border-border min-w-[80px] px-2 py-1 align-top"
+                          >
+                            <div
+                              contentEditable
+                              suppressContentEditableWarning
+                              className="outline-none whitespace-pre-wrap"
+                              onInput={(e) => {
+                                const text = e.currentTarget.textContent ?? ''
+                                const rows = block.content.split('\n').map(r => r.split('|'))
+                                if (!rows[rowIdx]) rows[rowIdx] = []
+                                rows[rowIdx][colIdx] = text
+                                const nextContent = rows
+                                  .map(r => r.map(c => c ?? '').join('|'))
+                                  .join('\n')
+                                onUpdate(block.id, { content: nextContent })
+                              }}
+                            >
+                              {cell}
+                            </div>
+                          </td>
+                        ))}
+                      </tr>
+                    )
+                  })}
+                </tbody>
+              </table>
+            </div>
           </div>
         ) : (
           editableEl
