@@ -414,7 +414,9 @@ function GraphPanel({ notes, people, activeNoteId, onSelectNote, isExpanded, onT
     const ro = new ResizeObserver(entries => {
       for (const e of entries) {
         const { width, height } = e.contentRect
-        if (width > 0 && height > 0) setSize({ w: width, h: height })
+        // Defer setSize to avoid firing synchronously during React's commit phase
+        // (triggered by rapid graphWidth updates during drag)
+        if (width > 0 && height > 0) requestAnimationFrame(() => setSize({ w: width, h: height }))
       }
     })
     ro.observe(el)
@@ -442,8 +444,10 @@ function GraphPanel({ notes, people, activeNoteId, onSelectNote, isExpanded, onT
       if (alpha > 0) {
         tickSim(nodesRef.current, edgesRef.current, size.w, size.h, alpha)
         tickCountRef.current++
+        // Only re-render when simulation is actually ticking — avoids calling setState
+        // at 60fps when idle, which conflicted with concurrent-mode renders in React 18
+        forceRender(k => k + 1)
       }
-      forceRender(k => k + 1)
       rafRef.current = requestAnimationFrame(animate)
     }
     rafRef.current = requestAnimationFrame(animate)
@@ -3308,7 +3312,9 @@ export default function NotesPage() {
   const [activeTag, setActiveTag] = useState<string | null>(null)
   const [sidebarOpen, setSidebarOpen] = useState(true)
   const [graphOpen, setGraphOpen] = useState(true)
-  const [graphExpanded, setGraphExpanded] = useState(false)
+  const [graphWidth, setGraphWidth] = useState(320)
+  const graphResizingRef = useRef(false)
+  const graphResizeStartRef = useRef({ x: 0, w: 320 })
   const [mounted, setMounted] = useState(false)
   const [people, setPeople] = useState<Person[]>([])
   const [customObjectTypes, setCustomObjectTypes] = useState<ObjectType[]>([])
@@ -3320,6 +3326,28 @@ export default function NotesPage() {
     setPeople(loadPeople())
     setCustomObjectTypes(loadObjectTypes())
     setMounted(true)
+  }, [])
+
+  // Graph panel resize via drag handle
+  useEffect(() => {
+    function onMouseMove(e: MouseEvent) {
+      if (!graphResizingRef.current) return
+      const dx = graphResizeStartRef.current.x - e.clientX   // drag left → wider
+      const newW = Math.max(240, Math.min(780, graphResizeStartRef.current.w + dx))
+      setGraphWidth(newW)
+    }
+    function onMouseUp() {
+      if (!graphResizingRef.current) return
+      graphResizingRef.current = false
+      document.body.style.cursor = ''
+      document.body.style.userSelect = ''
+    }
+    window.addEventListener('mousemove', onMouseMove)
+    window.addEventListener('mouseup', onMouseUp)
+    return () => {
+      window.removeEventListener('mousemove', onMouseMove)
+      window.removeEventListener('mouseup', onMouseUp)
+    }
   }, [])
 
   // Auto-save notes
@@ -3340,11 +3368,10 @@ export default function NotesPage() {
   function deletePerson(personId: string) {
     const person = people.find(p => p.id === personId)
     if (person?.noteId) {
-      setNotes(prev => {
-        const rest = prev.filter(n => n.id !== person.noteId)
-        if (activeId === person.noteId) setActiveId(rest[0]?.id ?? null)
-        return rest
-      })
+      // Compute new notes outside the updater to avoid calling setActiveId during render
+      const updatedNotes = notes.filter(n => n.id !== person.noteId)
+      setNotes(updatedNotes)
+      if (activeId === person.noteId) setActiveId(updatedNotes[0]?.id ?? null)
     }
     setPeople(prev => prev.filter(p => p.id !== personId))
   }
@@ -3436,11 +3463,11 @@ export default function NotesPage() {
   }
 
   function deleteNote(id: string) {
-    setNotes(prev => {
-      const rest = prev.filter(n => n.id !== id)
-      if (activeId === id) setActiveId(rest[0]?.id ?? null)
-      return rest
-    })
+    // Compute outside updater — calling setActiveId inside setNotes updater triggers
+    // "setState during render" error in React 18 concurrent mode
+    const updatedNotes = notes.filter(n => n.id !== id)
+    setNotes(updatedNotes)
+    if (activeId === id) setActiveId(updatedNotes[0]?.id ?? null)
   }
 
   if (!mounted) {
@@ -3542,18 +3569,34 @@ export default function NotesPage() {
             </div>
 
             {/* Graph panel */}
-            <div className={cn(
-              "flex-shrink-0 border-l transition-all duration-300 overflow-hidden",
-              !graphOpen ? 'w-0' : graphExpanded ? 'w-[580px]' : 'w-80'
-            )}>
-              <div className={cn("h-full transition-all duration-300", graphExpanded ? 'w-[580px]' : 'w-80')}>
+            <div
+              className="relative flex-shrink-0 border-l overflow-hidden h-full"
+              style={{ width: graphOpen ? graphWidth : 0, transition: graphResizingRef.current ? 'none' : 'width 200ms ease' }}
+            >
+              {/* Drag-to-resize handle */}
+              {graphOpen && (
+                <div
+                  className="absolute left-0 top-0 bottom-0 w-3 z-20 flex items-center justify-center cursor-col-resize group"
+                  style={{ transform: 'translateX(-50%)' }}
+                  onMouseDown={e => {
+                    e.preventDefault()
+                    graphResizingRef.current = true
+                    graphResizeStartRef.current = { x: e.clientX, w: graphWidth }
+                    document.body.style.cursor = 'col-resize'
+                    document.body.style.userSelect = 'none'
+                  }}
+                >
+                  <div className="w-0.5 h-10 rounded-full bg-border group-hover:bg-primary/50 transition-colors duration-150" />
+                </div>
+              )}
+              <div className="w-full h-full">
                 <GraphPanel
                   notes={notes}
                   people={people}
                   activeNoteId={activeId}
                   onSelectNote={id => setActiveId(id)}
-                  isExpanded={graphExpanded}
-                  onToggleExpand={() => setGraphExpanded(p => !p)}
+                  isExpanded={graphWidth > 420}
+                  onToggleExpand={() => setGraphWidth(w => w > 420 ? 320 : 580)}
                 />
               </div>
             </div>
