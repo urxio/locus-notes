@@ -3195,6 +3195,7 @@ function Sidebar({ notes, allNotes, activeId, search, onSearch, onSelect, onCrea
   const [ctxMenu, setCtxMenu] = useState<{ x: number; y: number; noteId: string } | null>(null)
   const [editingFolderId, setEditingFolderId] = useState<string | null>(null)
   const [editingName, setEditingName] = useState('')
+  const ctxMenuRef = useRef<HTMLDivElement>(null)
 
   const allTags = useMemo(() => {
     const counts = new Map<string, number>()
@@ -3209,10 +3210,16 @@ function Sidebar({ notes, allNotes, activeId, search, onSearch, onSelect, onCrea
     [folders, allNotes, useTreeView]
   )
 
-  // Close context menu on outside click
+  // Close context menu on outside click — use ref.contains() check so that
+  // clicking INSIDE the menu (on a folder button) does NOT close it before
+  // the onClick handler fires. In React 18, e.stopPropagation() on a React
+  // synthetic event does not stop native document listeners.
   useEffect(() => {
     if (!ctxMenu) return
-    function close() { setCtxMenu(null) }
+    function close(e: MouseEvent) {
+      if (ctxMenuRef.current?.contains(e.target as Node)) return
+      setCtxMenu(null)
+    }
     document.addEventListener('mousedown', close)
     return () => document.removeEventListener('mousedown', close)
   }, [ctxMenu])
@@ -3380,9 +3387,9 @@ function Sidebar({ notes, allNotes, activeId, search, onSearch, onSelect, onCrea
         {/* Context menu (right-click on note to move to folder) */}
         {ctxMenu && (
           <div
+            ref={ctxMenuRef}
             className="fixed z-50 bg-popover border rounded-lg shadow-lg py-1 min-w-[190px] text-sm"
             style={{ left: ctxMenu.x, top: ctxMenu.y }}
-            onMouseDown={e => e.stopPropagation()}
           >
             <div className="px-3 py-1 text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">Move to…</div>
             <button
@@ -3722,7 +3729,8 @@ export default function NotesPage() {
 
   function moveNoteToFolder(noteId: string, folderId: string | null) {
     setNotes(prev => prev.map(n => n.id === noteId ? { ...n, folderId } : n))
-    setContextMenu(null)
+    // Auto-expand the target folder so the user can immediately see the moved note
+    if (folderId) setExpandedFolders(prev => new Set([...prev, folderId]))
   }
 
   function toggleFolder(id: string) {
