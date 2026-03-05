@@ -279,23 +279,23 @@ function buildGraph(notes: Note[], people: Person[], w: number, h: number): { no
   const cx = w / 2, cy = h / 2
   notes.forEach((note, i) => {
     const a = (i / Math.max(notes.length, 1)) * Math.PI * 2
-    const r = Math.min(w, h) * 0.28
+    const r = Math.min(w, h) * 0.30
     nodes.push({
       id: `note:${note.id}`, type: 'note', label: note.title || 'Untitled',
       color: note.color, emoji: note.emoji,
       x: cx + Math.cos(a) * r + (Math.random() - 0.5) * 60,
       y: cy + Math.sin(a) * r + (Math.random() - 0.5) * 60,
-      vx: 0, vy: 0, r: 30, noteId: note.id,
+      vx: 0, vy: 0, r: 65, noteId: note.id,
     })
   })
   allTags.forEach((tag, i) => {
     const a = (i / Math.max(allTags.length, 1)) * Math.PI * 2
-    const r = Math.min(w, h) * 0.1
+    const r = Math.min(w, h) * 0.12
     nodes.push({
       id: `tag:${tag}`, type: 'tag', label: tag, color: '#475569',
       x: cx + Math.cos(a) * r + (Math.random() - 0.5) * 30,
       y: cy + Math.sin(a) * r + (Math.random() - 0.5) * 30,
-      vx: 0, vy: 0, r: 18,
+      vx: 0, vy: 0, r: 38,
     })
   })
   notes.forEach(note => note.tags.forEach(tag =>
@@ -327,7 +327,7 @@ function tickSim(nodes: GNode[], edges: GEdge[], w: number, h: number, alpha: nu
     for (let j = i + 1; j < nodes.length; j++) {
       const dx = nodes[j].x - nodes[i].x, dy = nodes[j].y - nodes[i].y
       const d = Math.sqrt(dx * dx + dy * dy) || 0.1
-      const f = Math.min(3800 / (d * d), 60) * alpha
+      const f = Math.min(12000 / (d * d), 80) * alpha
       const fx = (f * dx) / d, fy = (f * dy) / d
       nodes[i].vx -= fx; nodes[i].vy -= fy
       nodes[j].vx += fx; nodes[j].vy += fy
@@ -339,7 +339,7 @@ function tickSim(nodes: GNode[], edges: GEdge[], w: number, h: number, alpha: nu
     if (!s || !t) continue
     const dx = t.x - s.x, dy = t.y - s.y
     const d = Math.sqrt(dx * dx + dy * dy) || 0.1
-    const f = (d - 90) * 0.055 * alpha
+    const f = (d - 160) * 0.045 * alpha
     const fx = (f * dx) / d, fy = (f * dy) / d
     s.vx += fx; s.vy += fy; t.vx -= fx; t.vy -= fy
   }
@@ -471,11 +471,22 @@ function GraphPanel({ notes, people, activeNoteId, onSelectNote }: {
   const edges = edgesRef.current
   const nodeMap = new Map(nodes.map(n => [n.id, n]))
 
-  // Hexagon path for tag nodes
-  const hex = (r: number) => Array.from({ length: 6 }, (_, i) => {
-    const a = (Math.PI / 3) * i - Math.PI / 6
-    return `${(r * Math.cos(a)).toFixed(2)},${(r * Math.sin(a)).toFixed(2)}`
-  }).join(' ')
+  // Card half-dimensions
+  const NW = 64, NH = 19   // note card: ±64 wide, ±19 tall
+  const TW = 38, TH = 13   // tag pill:  ±38 wide, ±13 tall
+
+  // Return the port point on the edge of a node facing toward (tx, ty)
+  function port(node: GNode, tx: number): { x: number; y: number } {
+    const hw = node.type === 'note' ? NW : TW
+    return { x: tx >= node.x ? node.x + hw : node.x - hw, y: node.y }
+  }
+
+  // Smooth cubic bezier path between two port points
+  function bezier(sp: { x: number; y: number }, tp: { x: number; y: number }): string {
+    const cx = Math.max(55, Math.abs(tp.x - sp.x) * 0.55)
+    const sx = tp.x >= sp.x ? 1 : -1
+    return `M ${sp.x} ${sp.y} C ${sp.x + sx * cx} ${sp.y} ${tp.x - sx * cx} ${tp.y} ${tp.x} ${tp.y}`
+  }
 
   const hoveredNode = nodes.find(n => n.id === hovered)
 
@@ -483,7 +494,7 @@ function GraphPanel({ notes, people, activeNoteId, onSelectNote }: {
     <div
       ref={containerRef}
       className="relative w-full h-full overflow-hidden select-none"
-      style={{ background: '#05090f', cursor: hovered ? 'pointer' : dragRef.current ? 'grabbing' : 'grab' }}
+      style={{ background: '#f4f6f9', cursor: hovered ? 'pointer' : dragRef.current ? 'grabbing' : 'grab' }}
       onPointerDown={handlePointerDown}
       onPointerMove={handlePointerMove}
       onPointerUp={handlePointerUp}
@@ -492,38 +503,31 @@ function GraphPanel({ notes, people, activeNoteId, onSelectNote }: {
     >
       <svg width="100%" height="100%" style={{ position: 'absolute', inset: 0 }}>
         <defs>
-          {/* Background */}
-          <radialGradient id="g-bg" cx="48%" cy="42%" r="65%">
-            <stop offset="0%" stopColor="#0c1526" />
-            <stop offset="100%" stopColor="#03060d" />
-          </radialGradient>
-          {/* Dot grid */}
-          <pattern id="g-dots" x="0" y="0" width="24" height="24" patternUnits="userSpaceOnUse">
-            <circle cx="0.5" cy="0.5" r="0.6" fill="#111e33" />
+          {/* Dot grid pattern */}
+          <pattern id="g-dots" x="0" y="0" width="20" height="20" patternUnits="userSpaceOnUse">
+            <circle cx="1" cy="1" r="0.85" fill="#d1d9e6" />
           </pattern>
-          {/* Glow filters */}
-          <filter id="f-node" x="-60%" y="-60%" width="220%" height="220%">
-            <feGaussianBlur in="SourceGraphic" stdDeviation="5" result="blur" />
-            <feMerge><feMergeNode in="blur" /><feMergeNode in="SourceGraphic" /></feMerge>
+          {/* Card drop shadow */}
+          <filter id="f-card" x="-15%" y="-30%" width="130%" height="160%">
+            <feDropShadow dx="0" dy="2" stdDeviation="3" floodColor="#94a3b8" floodOpacity="0.18" />
           </filter>
-          <filter id="f-halo" x="-100%" y="-100%" width="300%" height="300%">
-            <feGaussianBlur in="SourceGraphic" stdDeviation="10" />
+          <filter id="f-card-active" x="-15%" y="-30%" width="130%" height="160%">
+            <feDropShadow dx="0" dy="3" stdDeviation="5" floodColor="#3b82f6" floodOpacity="0.22" />
           </filter>
-          <filter id="f-edge" x="-10%" y="-200%" width="120%" height="500%">
-            <feGaussianBlur in="SourceGraphic" stdDeviation="2" result="blur" />
-            <feMerge><feMergeNode in="blur" /><feMergeNode in="SourceGraphic" /></feMerge>
+          {/* Edge glow for active */}
+          <filter id="f-eglow" x="-5%" y="-300%" width="110%" height="700%">
+            <feGaussianBlur in="SourceGraphic" stdDeviation="2.5" result="b" />
+            <feMerge><feMergeNode in="b" /><feMergeNode in="SourceGraphic" /></feMerge>
           </filter>
           <style>{`
-            @keyframes gph-pulse { 0%,100%{r:38;opacity:.4} 50%{r:46;opacity:.15} }
-            @keyframes gph-flow  { from{stroke-dashoffset:20} to{stroke-dashoffset:0} }
-            .gph-ring { animation: gph-pulse 2.4s ease-in-out infinite; }
-            .gph-dash { animation: gph-flow .9s linear infinite; }
+            @keyframes gph-flow { from{stroke-dashoffset:18} to{stroke-dashoffset:0} }
+            .gph-dash { animation: gph-flow .8s linear infinite; }
           `}</style>
         </defs>
 
-        {/* Background layers */}
-        <rect width="100%" height="100%" fill="url(#g-bg)" />
-        <rect width="100%" height="100%" fill="url(#g-dots)" opacity="0.9" />
+        {/* Background */}
+        <rect width="100%" height="100%" fill="#f4f6f9" />
+        <rect width="100%" height="100%" fill="url(#g-dots)" />
 
         <g transform={`translate(${pan.x},${pan.y}) scale(${zoom})`}>
 
@@ -533,107 +537,111 @@ function GraphPanel({ notes, people, activeNoteId, onSelectNote }: {
             if (!s || !t) return null
             const isActive = s.noteId === activeNoteId || t.noteId === activeNoteId
             const isHov = s.id === hovered || t.id === hovered
+            const sp = port(s, t.x), tp = port(t, s.x)
+            const d = bezier(sp, tp)
 
             if (isActive) return (
               <g key={i}>
-                <line x1={s.x} y1={s.y} x2={t.x} y2={t.y}
-                  stroke="#6366f1" strokeWidth={4} strokeOpacity={0.18} filter="url(#f-edge)" />
-                <line x1={s.x} y1={s.y} x2={t.x} y2={t.y}
-                  stroke="#818cf8" strokeWidth={1.5} strokeOpacity={0.85}
-                  strokeDasharray="5 5" className="gph-dash" />
+                <path d={d} fill="none" stroke="#3b82f6" strokeWidth={3.5} strokeOpacity={0.15} filter="url(#f-eglow)" />
+                <path d={d} fill="none" stroke="#3b82f6" strokeWidth={1.5} strokeOpacity={0.8}
+                  strokeDasharray="5 4" className="gph-dash" />
               </g>
             )
             return (
-              <line key={i} x1={s.x} y1={s.y} x2={t.x} y2={t.y}
-                stroke={isHov ? '#1e3a5a' : '#0d1828'}
+              <path key={i} d={d} fill="none"
+                stroke={isHov ? '#93b4d4' : '#c5d0e0'}
                 strokeWidth={isHov ? 1.5 : 1}
-                strokeOpacity={isHov ? 1 : 0.9}
+                strokeOpacity={isHov ? 0.9 : 0.7}
               />
             )
           })}
 
-          {/* ── Tag nodes (hexagons) ── */}
+          {/* ── Tag nodes (pills) ── */}
           {nodes.filter(n => n.type === 'tag').map(node => {
             const isHov = node.id === hovered
             const connectedNotes = edges
               .filter(e => e.target === node.id || e.source === node.id)
               .map(e => e.source === node.id ? e.target : e.source)
             const isActive = connectedNotes.some(nid => nodeMap.get(nid)?.noteId === activeNoteId)
-            const r = isHov ? 20 : 17
 
             return (
               <g key={node.id} transform={`translate(${node.x},${node.y})`}>
-                {/* Ambient halo */}
-                {(isActive || isHov) && (
-                  <polygon points={hex(r + 7)}
-                    fill={isActive ? '#4f46e5' : '#1e3a5a'} fillOpacity={0.12}
-                    filter="url(#f-halo)" />
-                )}
-                {/* Hex body */}
-                <polygon points={hex(r)}
-                  fill={isActive ? '#0c1428' : '#080f1c'}
-                  stroke={isActive ? '#4f46e5' : isHov ? '#1e3a5a' : '#111f35'}
+                {/* Pill body */}
+                <rect x={-TW} y={-TH} width={TW * 2} height={TH * 2} rx={TH}
+                  fill={isActive ? '#eff6ff' : isHov ? '#f8fafc' : '#ffffff'}
+                  stroke={isActive ? '#93c5fd' : isHov ? '#c5d0e0' : '#dde3ec'}
                   strokeWidth={isActive ? 1.5 : 1}
+                  filter="url(#f-card)"
+                />
+                {/* Left port */}
+                <circle cx={-TW} cy={0} r={4}
+                  fill={isActive ? '#3b82f6' : isHov ? '#93c5fd' : '#c5d0e0'}
+                  stroke={isActive ? '#fff' : '#f1f5f9'} strokeWidth={1.5}
+                />
+                {/* Right port */}
+                <circle cx={TW} cy={0} r={4}
+                  fill={isActive ? '#3b82f6' : isHov ? '#93c5fd' : '#c5d0e0'}
+                  stroke={isActive ? '#fff' : '#f1f5f9'} strokeWidth={1.5}
                 />
                 {/* Label */}
-                <text textAnchor="middle" dominantBaseline="central" fontSize={7}
-                  fill={isActive ? '#818cf8' : isHov ? '#3d607a' : '#233248'}
-                  style={{ pointerEvents: 'none', fontFamily: 'ui-monospace,monospace', userSelect: 'none', letterSpacing: '.04em' }}
+                <text textAnchor="middle" dominantBaseline="central" fontSize={8.5}
+                  fill={isActive ? '#1d4ed8' : isHov ? '#3b82f6' : '#64748b'}
+                  fontWeight={isActive ? '600' : '500'}
+                  style={{ pointerEvents: 'none', fontFamily: 'ui-sans-serif,system-ui,sans-serif', userSelect: 'none' }}
                 >
-                  #{node.label.length > 8 ? node.label.slice(0, 8) + '…' : node.label}
+                  #{node.label.length > 9 ? node.label.slice(0, 9) + '…' : node.label}
                 </text>
               </g>
             )
           })}
 
-          {/* ── Note nodes ── */}
+          {/* ── Note nodes (cards) ── */}
           {nodes.filter(n => n.type === 'note').map(node => {
             const isActive = node.noteId === activeNoteId
             const isHov = node.id === hovered
-            const r = node.r * (isHov ? 1.09 : 1)
 
             return (
               <g key={node.id} transform={`translate(${node.x},${node.y})`}>
-                {/* Ambient color halo */}
-                <circle r={r + 16} fill={node.color}
-                  fillOpacity={isActive ? 0.13 : isHov ? 0.07 : 0.03}
-                  filter="url(#f-halo)" />
-                {/* Animated pulse ring for active */}
-                {isActive && (
-                  <circle r={38} fill="none"
-                    stroke={node.color} strokeWidth={1.5} strokeOpacity={0.5}
-                    className="gph-ring" />
-                )}
-                {/* Outer ring (active / hover) */}
-                {(isActive || isHov) && (
-                  <circle r={r + 5} fill="none"
-                    stroke={node.color}
-                    strokeWidth={isActive ? 1.5 : 1}
-                    strokeOpacity={isActive ? 0.7 : 0.35}
-                  />
-                )}
-                {/* Main circle */}
-                <circle r={r} fill={node.color}
-                  fillOpacity={isActive ? 0.92 : isHov ? 0.78 : 0.65}
-                  filter={isActive || isHov ? 'url(#f-node)' : undefined}
+                {/* Card body */}
+                <rect x={-NW} y={-NH} width={NW * 2} height={NH * 2} rx={7}
+                  fill={isActive ? '#eff6ff' : '#ffffff'}
+                  stroke={isActive ? '#3b82f6' : isHov ? '#93b4d4' : '#dde3ec'}
+                  strokeWidth={isActive ? 1.5 : 1}
+                  filter={isActive ? 'url(#f-card-active)' : 'url(#f-card)'}
                 />
-                {/* Specular highlight */}
-                <circle r={r * 0.42} cx={-r * 0.18} cy={-r * 0.28}
-                  fill="white" fillOpacity={0.1} />
+                {/* Color accent bar on left */}
+                <rect x={-NW} y={-NH} width={5} height={NH * 2} rx={7}
+                  fill={node.color} opacity={isActive ? 1 : isHov ? 0.85 : 0.7}
+                />
+                <rect x={-NW + 5} y={-NH} width={3} height={NH * 2} fill={node.color}
+                  opacity={isActive ? 0.25 : 0.12}
+                />
+                {/* Left port */}
+                <circle cx={-NW} cy={0} r={5}
+                  fill={isActive ? node.color : isHov ? node.color : '#e2e8f0'}
+                  stroke="#ffffff" strokeWidth={2}
+                  opacity={isActive ? 1 : isHov ? 0.8 : 0.6}
+                />
+                {/* Right port */}
+                <circle cx={NW} cy={0} r={5}
+                  fill={isActive ? node.color : isHov ? node.color : '#e2e8f0'}
+                  stroke="#ffffff" strokeWidth={2}
+                  opacity={isActive ? 1 : isHov ? 0.8 : 0.6}
+                />
                 {/* Emoji */}
-                <text textAnchor="middle" y={1} fontSize={isHov ? 15 : 13}
-                  dominantBaseline="central"
-                  style={{ pointerEvents: 'none', userSelect: 'none' }}
+                <text x={-NW + 22} textAnchor="middle" dominantBaseline="central"
+                  fontSize={14} style={{ pointerEvents: 'none', userSelect: 'none' }}
                 >
                   {node.emoji}
                 </text>
-                {/* Label */}
-                <text textAnchor="middle" y={r + 14} fontSize={9}
-                  fill={isActive ? '#e2e8f0' : isHov ? '#94a3b8' : '#2d4060'}
-                  fontWeight={isActive ? '600' : '400'}
-                  style={{ pointerEvents: 'none', userSelect: 'none', fontFamily: 'ui-monospace,monospace', letterSpacing: '.01em' }}
+                {/* Title */}
+                <text x={-NW + 36} textAnchor="start" dominantBaseline="central"
+                  fontSize={10.5}
+                  fill={isActive ? '#1e40af' : isHov ? '#334155' : '#475569'}
+                  fontWeight={isActive ? '600' : '500'}
+                  style={{ pointerEvents: 'none', userSelect: 'none', fontFamily: 'ui-sans-serif,system-ui,sans-serif' }}
                 >
-                  {node.label.length > 13 ? node.label.slice(0, 13) + '…' : node.label}
+                  {node.label.length > 10 ? node.label.slice(0, 10) + '…' : node.label}
                 </text>
               </g>
             )
@@ -643,10 +651,9 @@ function GraphPanel({ notes, people, activeNoteId, onSelectNote }: {
 
       {/* ── Hover tooltip ── */}
       {hoveredNode && (
-        <div className="absolute top-3 left-1/2 -translate-x-1/2 pointer-events-none"
-          style={{ zIndex: 10 }}>
-          <div className="flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] tracking-widest uppercase"
-            style={{ background: 'rgba(8,14,26,0.88)', border: '1px solid rgba(99,102,241,0.25)', color: '#6474a0', backdropFilter: 'blur(12px)', fontFamily: 'ui-monospace,monospace' }}>
+        <div className="absolute top-3 left-1/2 -translate-x-1/2 pointer-events-none" style={{ zIndex: 10 }}>
+          <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[11px] font-medium shadow-sm"
+            style={{ background: 'rgba(255,255,255,0.95)', border: '1px solid #dde3ec', color: '#475569', backdropFilter: 'blur(8px)', fontFamily: 'ui-sans-serif,system-ui,sans-serif' }}>
             {hoveredNode.type === 'note' && <span>{hoveredNode.emoji}</span>}
             <span>{hoveredNode.type === 'tag' ? `#${hoveredNode.label}` : hoveredNode.label}</span>
           </div>
@@ -655,9 +662,9 @@ function GraphPanel({ notes, people, activeNoteId, onSelectNote }: {
 
       {/* ── Header ── */}
       <div className="absolute top-3.5 left-3.5 flex items-center gap-1.5 pointer-events-none">
-        <span className="w-1.5 h-1.5 rounded-full bg-indigo-600 animate-pulse" />
-        <span className="text-[9px] tracking-[.18em] uppercase"
-          style={{ color: '#1a2a42', fontFamily: 'ui-monospace,monospace' }}>Graph</span>
+        <span className="w-1.5 h-1.5 rounded-full bg-blue-400 animate-pulse" />
+        <span className="text-[9px] font-semibold tracking-[.16em] uppercase text-slate-400"
+          style={{ fontFamily: 'ui-sans-serif,system-ui,sans-serif' }}>Graph</span>
       </div>
 
       {/* ── Zoom controls ── */}
@@ -668,35 +675,21 @@ function GraphPanel({ notes, people, activeNoteId, onSelectNote }: {
           { label: '⌂', fn: () => { setPan({ x: 0, y: 0 }); setZoom(1) } },
         ] as { label: string; fn: () => void }[]).map(({ label, fn }) => (
           <button key={label}
-            className="w-6 h-6 rounded-md text-xs flex items-center justify-center transition-all"
-            style={{ background: 'rgba(10,16,28,0.75)', border: '1px solid #0d1a2e', color: '#1e3050', backdropFilter: 'blur(6px)' }}
-            onMouseEnter={e => { const el = e.currentTarget; el.style.color = '#6474a0'; el.style.borderColor = '#1e3050' }}
-            onMouseLeave={e => { const el = e.currentTarget; el.style.color = '#1e3050'; el.style.borderColor = '#0d1a2e' }}
+            className="w-6 h-6 rounded-md text-xs flex items-center justify-center transition-all shadow-sm"
+            style={{ background: '#ffffff', border: '1px solid #dde3ec', color: '#94a3b8' }}
+            onMouseEnter={e => { const el = e.currentTarget; el.style.color = '#3b82f6'; el.style.borderColor = '#93c5fd' }}
+            onMouseLeave={e => { const el = e.currentTarget; el.style.color = '#94a3b8'; el.style.borderColor = '#dde3ec' }}
             onClick={e => { e.stopPropagation(); fn() }}
           >{label}</button>
         ))}
       </div>
 
-      {/* ── Legend ── */}
-      <div className="absolute bottom-4 left-3.5 flex items-center gap-2.5 pointer-events-none">
-        <span className="flex items-center gap-1 text-[8px] tracking-widest uppercase"
-          style={{ color: '#111f35', fontFamily: 'ui-monospace,monospace' }}>
-          <span className="w-2 h-2 rounded-full inline-block" style={{ background: '#1e2d4a' }} />
-          Note
-        </span>
-        <span className="flex items-center gap-1 text-[8px] tracking-widest uppercase"
-          style={{ color: '#111f35', fontFamily: 'ui-monospace,monospace' }}>
-          <span className="inline-block w-2 h-2" style={{ background: '#0e1826', clipPath: 'polygon(50% 0%,100% 25%,100% 75%,50% 100%,0% 75%,0% 25%)' }} />
-          Tag
-        </span>
-      </div>
-
       {/* ── Empty state ── */}
       {nodes.length === 0 && (
-        <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 pointer-events-none">
-          <Network className="w-7 h-7" style={{ color: '#0d1a2e', opacity: .6 }} />
-          <span className="text-[9px] tracking-[.2em] uppercase"
-            style={{ color: '#0d1a2e', fontFamily: 'ui-monospace,monospace' }}>
+        <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 pointer-events-none">
+          <Network className="w-7 h-7 text-slate-300" />
+          <span className="text-[10px] font-medium tracking-widest uppercase text-slate-300"
+            style={{ fontFamily: 'ui-sans-serif,system-ui,sans-serif' }}>
             Add tags to see connections
           </span>
         </div>
