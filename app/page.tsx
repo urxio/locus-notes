@@ -3568,27 +3568,27 @@ export default function NotesPage() {
               )}
             </div>
 
+            {/* Drag-to-resize handle — sibling in the flex row, never clipped */}
+            {graphOpen && (
+              <div
+                className="flex-shrink-0 w-3 relative flex items-center justify-center cursor-col-resize group z-10 hover:bg-muted/40 transition-colors"
+                onMouseDown={e => {
+                  e.preventDefault()
+                  graphResizingRef.current = true
+                  graphResizeStartRef.current = { x: e.clientX, w: graphWidth }
+                  document.body.style.cursor = 'col-resize'
+                  document.body.style.userSelect = 'none'
+                }}
+              >
+                <div className="w-1 h-12 rounded-full bg-muted-foreground/30 group-hover:bg-primary/70 transition-colors duration-150" />
+              </div>
+            )}
+
             {/* Graph panel */}
             <div
-              className="relative flex-shrink-0 border-l overflow-hidden h-full"
+              className="relative flex-shrink-0 h-full overflow-hidden"
               style={{ width: graphOpen ? graphWidth : 0, transition: graphResizingRef.current ? 'none' : 'width 200ms ease' }}
             >
-              {/* Drag-to-resize handle */}
-              {graphOpen && (
-                <div
-                  className="absolute left-0 top-0 bottom-0 w-3 z-20 flex items-center justify-center cursor-col-resize group"
-                  style={{ transform: 'translateX(-50%)' }}
-                  onMouseDown={e => {
-                    e.preventDefault()
-                    graphResizingRef.current = true
-                    graphResizeStartRef.current = { x: e.clientX, w: graphWidth }
-                    document.body.style.cursor = 'col-resize'
-                    document.body.style.userSelect = 'none'
-                  }}
-                >
-                  <div className="w-0.5 h-10 rounded-full bg-border group-hover:bg-primary/50 transition-colors duration-150" />
-                </div>
-              )}
               <div className="w-full h-full">
                 <GraphPanel
                   notes={notes}
