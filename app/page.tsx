@@ -13,7 +13,7 @@ import {
   Code2, Quote, CheckSquare, Minus, PanelLeftClose, PanelLeftOpen,
   ChevronRight, BookOpen, Calendar, GripVertical,
   User, Bold, Italic, Strikethrough, Palette, Underline,
-  Maximize2, Minimize2
+  Maximize2, Minimize2, FolderPlus, Pencil
 } from "lucide-react"
 import { ThemeSwitcher } from "@/components/theme-switcher"
 import { useTheme } from "next-themes"
@@ -42,6 +42,36 @@ interface Note {
   createdAt: number
   updatedAt: number
   personId?: string
+  folderId?: string | null
+}
+
+// ─── Folders ──────────────────────────────────────────────────────────────────
+
+interface Folder {
+  id: string
+  name: string
+  emoji: string
+  parentId: string | null
+  createdAt: number
+}
+
+type TreeItem =
+  | { kind: 'folder'; folder: Folder; children: TreeItem[] }
+  | { kind: 'note'; note: Note }
+
+function buildTree(
+  folders: Folder[],
+  notes: Note[],
+  parentId: string | null = null
+): TreeItem[] {
+  const items: TreeItem[] = []
+  for (const folder of folders.filter(f => f.parentId === parentId)) {
+    items.push({ kind: 'folder', folder, children: buildTree(folders, notes, folder.id) })
+  }
+  for (const note of notes.filter(n => (n.folderId ?? null) === parentId)) {
+    items.push({ kind: 'note', note })
+  }
+  return items
 }
 
 // ─── People ───────────────────────────────────────────────────────────────────
@@ -161,6 +191,21 @@ const SEED_NOTES: Note[] = [
 const STORAGE_KEY = 'locus-notes-v1'
 const PEOPLE_STORAGE_KEY = 'locus-people-v1'
 const OBJECT_TYPES_KEY = 'locus-object-types-v1'
+const FOLDERS_STORAGE_KEY = 'locus-folders-v1'
+
+function loadFolders(): Folder[] {
+  if (typeof window === 'undefined') return []
+  try {
+    const raw = localStorage.getItem(FOLDERS_STORAGE_KEY)
+    if (raw) return JSON.parse(raw)
+  } catch { }
+  return []
+}
+
+function saveFolders(folders: Folder[]) {
+  if (typeof window === 'undefined') return
+  try { localStorage.setItem(FOLDERS_STORAGE_KEY, JSON.stringify(folders)) } catch { }
+}
 
 const BUILTIN_OBJECT_TYPES: ObjectType[] = [
   { id: 'person', name: 'Person', emoji: '👤', isBuiltin: true },
@@ -3043,7 +3088,7 @@ function NoteEditor({ note, allTags, onChange, onDelete, people, onCreatePerson,
                   onPasteLines={insertPastedLines}
                   people={people}
                   onCreatePerson={onCreatePerson}
-                  onNavigateTo={onNavigateTo}
+                  onNavigateTo={onNavigateTo ?? (() => {})}
                   objectTypes={objectTypes}
                   onCreateObjectType={onCreateObjectType}
                   onFocusPrev={focusPrevBlock}
@@ -3132,17 +3177,144 @@ function NoteEditor({ note, allTags, onChange, onDelete, people, onCreatePerson,
 
 // ─── Sidebar ──────────────────────────────────────────────────────────────────
 
-function Sidebar({ notes, activeId, search, onSearch, onSelect, onCreate, activeTag, onTagFilter, people, onDeletePerson, objectTypes, onCreateObjectType }: {
-  notes: Note[]; activeId: string | null; search: string; onSearch: (q: string) => void
+function Sidebar({ notes, allNotes, activeId, search, onSearch, onSelect, onCreate, activeTag, onTagFilter, people, onDeletePerson, objectTypes, onCreateObjectType, folders, expandedFolders, onToggleFolder, onCreateFolder, onRenameFolder, onDeleteFolder, onMoveNote }: {
+  notes: Note[]        // filtered notes (flat search/tag view)
+  allNotes: Note[]     // all notes (for folder tree)
+  activeId: string | null; search: string; onSearch: (q: string) => void
   onSelect: (id: string) => void; onCreate: () => void; activeTag: string | null; onTagFilter: (tag: string | null) => void
   people: Person[]; onDeletePerson: (id: string) => void
   objectTypes: ObjectType[]; onCreateObjectType: (name: string, emoji: string) => void
+  folders: Folder[]
+  expandedFolders: Set<string>
+  onToggleFolder: (id: string) => void
+  onCreateFolder: (name?: string, parentId?: string | null) => void
+  onRenameFolder: (id: string, name: string) => void
+  onDeleteFolder: (id: string) => void
+  onMoveNote: (noteId: string, folderId: string | null) => void
 }) {
+  const [ctxMenu, setCtxMenu] = useState<{ x: number; y: number; noteId: string } | null>(null)
+  const [editingFolderId, setEditingFolderId] = useState<string | null>(null)
+  const [editingName, setEditingName] = useState('')
+
   const allTags = useMemo(() => {
     const counts = new Map<string, number>()
     notes.forEach(n => n.tags.forEach(t => counts.set(t, (counts.get(t) ?? 0) + 1)))
     return [...counts.entries()].sort((a, b) => b[1] - a[1]).map(([t]) => t)
   }, [notes])
+
+  // Use tree view when no search/tag filter is active
+  const useTreeView = !search.trim() && !activeTag
+  const treeItems = useMemo(
+    () => useTreeView ? buildTree(folders, allNotes) : [],
+    [folders, allNotes, useTreeView]
+  )
+
+  // Close context menu on outside click
+  useEffect(() => {
+    if (!ctxMenu) return
+    function close() { setCtxMenu(null) }
+    document.addEventListener('mousedown', close)
+    return () => document.removeEventListener('mousedown', close)
+  }, [ctxMenu])
+
+  function renderNoteItem(note: Note, depth: number) {
+    return (
+      <button key={note.id}
+        onClick={() => onSelect(note.id)}
+        onContextMenu={e => { e.preventDefault(); setCtxMenu({ x: e.clientX, y: e.clientY, noteId: note.id }) }}
+        style={{ paddingLeft: `${8 + depth * 14}px` }}
+        className={cn(
+          "w-full text-left pr-2.5 py-2 rounded-lg flex items-start gap-2 group transition-colors",
+          note.id === activeId
+            ? 'bg-background shadow-sm ring-1 ring-border'
+            : 'hover:bg-background/80'
+        )}
+      >
+        <span className="text-base leading-none mt-0.5 flex-shrink-0">{note.emoji}</span>
+        <div className="flex-1 min-w-0">
+          <div className="text-sm font-medium truncate">{note.title || 'Untitled'}</div>
+          <div className="flex flex-wrap gap-1 mt-0.5">
+            {note.tags.slice(0, 3).map(tag => (
+              <span key={tag} className="text-[10px] text-muted-foreground font-mono font-medium">#{tag}</span>
+            ))}
+            {note.tags.length > 3 && <span className="text-[10px] text-muted-foreground/70">+{note.tags.length - 3}</span>}
+          </div>
+        </div>
+        <span className="w-1.5 h-1.5 rounded-full flex-shrink-0 mt-1.5" style={{ backgroundColor: note.color }} />
+      </button>
+    )
+  }
+
+  function renderFolderRow(folder: Folder, children: TreeItem[], depth: number): React.ReactNode {
+    const isOpen = expandedFolders.has(folder.id)
+    const isEditing = editingFolderId === folder.id
+    return (
+      <div key={folder.id}>
+        <div
+          style={{ paddingLeft: `${4 + depth * 14}px` }}
+          className="flex items-center gap-0.5 group/folder pr-1 py-1 rounded-md hover:bg-background/50"
+        >
+          <button onClick={() => onToggleFolder(folder.id)} className="flex items-center gap-1 flex-1 min-w-0">
+            <ChevronRight
+              className={cn("w-3 h-3 text-muted-foreground/60 transition-transform flex-shrink-0", isOpen && "rotate-90")}
+            />
+            <span className="text-sm flex-shrink-0">📁</span>
+            {isEditing ? (
+              <input
+                autoFocus
+                value={editingName}
+                onChange={e => setEditingName(e.target.value)}
+                onBlur={() => { onRenameFolder(folder.id, editingName || folder.name); setEditingFolderId(null) }}
+                onKeyDown={e => {
+                  if (e.key === 'Enter') { onRenameFolder(folder.id, editingName || folder.name); setEditingFolderId(null) }
+                  if (e.key === 'Escape') setEditingFolderId(null)
+                  e.stopPropagation()
+                }}
+                onClick={e => e.stopPropagation()}
+                className="flex-1 min-w-0 text-sm bg-background border border-primary/50 rounded px-1 py-0 outline-none"
+              />
+            ) : (
+              <span className="text-sm font-medium truncate">{folder.name}</span>
+            )}
+          </button>
+          <div className="opacity-0 group-hover/folder:opacity-100 flex items-center gap-0.5 flex-shrink-0">
+            <button
+              onClick={() => onCreateFolder('New Folder', folder.id)}
+              title="New subfolder"
+              className="p-0.5 rounded hover:bg-primary/10 text-muted-foreground hover:text-primary transition-colors"
+            >
+              <FolderPlus className="w-3 h-3" />
+            </button>
+            <button
+              onClick={() => { setEditingFolderId(folder.id); setEditingName(folder.name) }}
+              title="Rename"
+              className="p-0.5 rounded hover:bg-primary/10 text-muted-foreground hover:text-primary transition-colors"
+            >
+              <Pencil className="w-3 h-3" />
+            </button>
+            <button
+              onClick={() => onDeleteFolder(folder.id)}
+              title="Delete folder"
+              className="p-0.5 rounded hover:bg-destructive/10 text-muted-foreground hover:text-destructive transition-colors"
+            >
+              <Trash2 className="w-3 h-3" />
+            </button>
+          </div>
+        </div>
+        {isOpen && (
+          <div>{renderTree(children, depth + 1)}</div>
+        )}
+      </div>
+    )
+  }
+
+  function renderTree(items: TreeItem[], depth = 0): React.ReactNode {
+    return items.map(item =>
+      item.kind === 'folder'
+        ? renderFolderRow(item.folder, item.children, depth)
+        : renderNoteItem(item.note, depth)
+    )
+  }
 
   return (
     <div className="flex flex-col h-full bg-muted/30 border-r">
@@ -3153,14 +3325,24 @@ function Sidebar({ notes, activeId, search, onSearch, onSelect, onCreate, active
             <BookOpen className="w-4 h-4 text-primary" />
             <span className="font-semibold text-sm">Locus Notes</span>
           </div>
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button size="icon" variant="ghost" className="h-7 w-7" onClick={onCreate}>
-                <Plus className="w-4 h-4" />
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent side="right">New note</TooltipContent>
-          </Tooltip>
+          <div className="flex items-center gap-0.5">
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => onCreateFolder()}>
+                  <FolderPlus className="w-3.5 h-3.5" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent side="right">New folder</TooltipContent>
+            </Tooltip>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button size="icon" variant="ghost" className="h-7 w-7" onClick={onCreate}>
+                  <Plus className="w-4 h-4" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent side="right">New note</TooltipContent>
+            </Tooltip>
+          </div>
         </div>
         <div className="relative">
           <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
@@ -3171,38 +3353,60 @@ function Sidebar({ notes, activeId, search, onSearch, onSelect, onCreate, active
       </div>
 
       <ScrollArea className="flex-1">
-        {/* Notes list */}
+        {/* Notes / Tree list */}
         <div className="p-2 space-y-0.5">
-          {notes.map(note => (
-            <button key={note.id}
-              onClick={() => onSelect(note.id)}
-              className={cn(
-                "w-full text-left px-2.5 py-2 rounded-lg flex items-start gap-2.5 group transition-colors",
-                note.id === activeId
-                  ? 'bg-background shadow-sm ring-1 ring-border'
-                  : 'hover:bg-background/80'
-              )}
-            >
-              <span className="text-base leading-none mt-0.5 flex-shrink-0">{note.emoji}</span>
-              <div className="flex-1 min-w-0">
-                <div className="text-sm font-medium truncate">{note.title || 'Untitled'}</div>
-                <div className="flex flex-wrap gap-1 mt-1">
-                  {note.tags.slice(0, 3).map(tag => (
-                    <span key={tag} className="text-[10px] text-muted-foreground font-mono font-medium">#{tag}</span>
-                  ))}
-                  {note.tags.length > 3 && <span className="text-[10px] text-muted-foreground/70">+{note.tags.length - 3}</span>}
+          {useTreeView ? (
+            <>
+              {treeItems.length === 0 ? (
+                <div className="py-8 text-center text-xs text-muted-foreground">
+                  <FileText className="w-6 h-6 mx-auto mb-2 opacity-30" />
+                  No notes yet
                 </div>
-              </div>
-              <span className="w-1.5 h-1.5 rounded-full flex-shrink-0 mt-1.5" style={{ backgroundColor: note.color }} />
-            </button>
-          ))}
-          {notes.length === 0 && (
-            <div className="py-8 text-center text-xs text-muted-foreground">
-              <FileText className="w-6 h-6 mx-auto mb-2 opacity-30" />
-              No notes found
-            </div>
+              ) : renderTree(treeItems)}
+            </>
+          ) : (
+            <>
+              {notes.map(note => renderNoteItem(note, 0))}
+              {notes.length === 0 && (
+                <div className="py-8 text-center text-xs text-muted-foreground">
+                  <FileText className="w-6 h-6 mx-auto mb-2 opacity-30" />
+                  No notes found
+                </div>
+              )}
+            </>
           )}
         </div>
+
+        {/* Context menu (right-click on note to move to folder) */}
+        {ctxMenu && (
+          <div
+            className="fixed z-50 bg-popover border rounded-lg shadow-lg py-1 min-w-[190px] text-sm"
+            style={{ left: ctxMenu.x, top: ctxMenu.y }}
+            onMouseDown={e => e.stopPropagation()}
+          >
+            <div className="px-3 py-1 text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">Move to…</div>
+            <button
+              onClick={() => { onMoveNote(ctxMenu.noteId, null); setCtxMenu(null) }}
+              className="w-full text-left px-3 py-1.5 hover:bg-accent flex items-center gap-2 transition-colors"
+            >
+              <FileText className="w-3.5 h-3.5 text-muted-foreground flex-shrink-0" />
+              Root (no folder)
+            </button>
+            {folders.map(folder => (
+              <button
+                key={folder.id}
+                onClick={() => { onMoveNote(ctxMenu.noteId, folder.id); setCtxMenu(null) }}
+                className="w-full text-left px-3 py-1.5 hover:bg-accent flex items-center gap-2 transition-colors"
+              >
+                <span className="flex-shrink-0">📁</span>
+                <span className="truncate">{folder.name}</span>
+              </button>
+            ))}
+            {folders.length === 0 && (
+              <div className="px-3 py-1.5 text-xs text-muted-foreground/50 italic">No folders yet</div>
+            )}
+          </div>
+        )}
 
         {/* Objects section — built-in types always visible, custom types when populated */}
         {(() => {
@@ -3318,6 +3522,9 @@ export default function NotesPage() {
   const [mounted, setMounted] = useState(false)
   const [people, setPeople] = useState<Person[]>([])
   const [customObjectTypes, setCustomObjectTypes] = useState<ObjectType[]>([])
+  const [folders, setFolders] = useState<Folder[]>([])
+  const [expandedFolders, setExpandedFolders] = useState<Set<string>>(new Set())
+  const [contextMenu, setContextMenu] = useState<{ x: number; y: number; noteId: string } | null>(null)
 
   useEffect(() => {
     const loaded = loadNotes().map(n => ({ ...n, blocks: normalizeBlocks(n.blocks) }))
@@ -3325,6 +3532,7 @@ export default function NotesPage() {
     if (loaded.length > 0) setActiveId(loaded[0].id)
     setPeople(loadPeople())
     setCustomObjectTypes(loadObjectTypes())
+    setFolders(loadFolders())
     setMounted(true)
   }, [])
 
@@ -3364,6 +3572,11 @@ export default function NotesPage() {
   useEffect(() => {
     if (mounted) saveObjectTypes(customObjectTypes)
   }, [customObjectTypes, mounted])
+
+  // Auto-save folders
+  useEffect(() => {
+    if (mounted) saveFolders(folders)
+  }, [folders, mounted])
 
   function deletePerson(personId: string) {
     const person = people.find(p => p.id === personId)
@@ -3470,6 +3683,57 @@ export default function NotesPage() {
     if (activeId === id) setActiveId(updatedNotes[0]?.id ?? null)
   }
 
+  // ─── Folder CRUD ────────────────────────────────────────────────────────────
+
+  function createFolder(name = 'New Folder', parentId: string | null = null) {
+    const folder: Folder = {
+      id: crypto.randomUUID(),
+      name,
+      emoji: '📁',
+      parentId,
+      createdAt: Date.now(),
+    }
+    setFolders(prev => [...prev, folder])
+    setExpandedFolders(prev => new Set([...prev, folder.id]))
+  }
+
+  function renameFolder(id: string, name: string) {
+    setFolders(prev => prev.map(f => f.id === id ? { ...f, name } : f))
+  }
+
+  function deleteFolder(id: string) {
+    // Collect this folder and all descendants recursively
+    function collectDescendantIds(folderId: string, allFolders: Folder[]): string[] {
+      const children = allFolders.filter(f => f.parentId === folderId)
+      return [folderId, ...children.flatMap(c => collectDescendantIds(c.id, allFolders))]
+    }
+    const idsToDelete = collectDescendantIds(id, folders)
+    // Move notes from deleted folders back to root
+    setNotes(prev => prev.map(n =>
+      n.folderId && idsToDelete.includes(n.folderId) ? { ...n, folderId: null } : n
+    ))
+    setFolders(prev => prev.filter(f => !idsToDelete.includes(f.id)))
+    setExpandedFolders(prev => {
+      const next = new Set(prev)
+      idsToDelete.forEach(fid => next.delete(fid))
+      return next
+    })
+  }
+
+  function moveNoteToFolder(noteId: string, folderId: string | null) {
+    setNotes(prev => prev.map(n => n.id === noteId ? { ...n, folderId } : n))
+    setContextMenu(null)
+  }
+
+  function toggleFolder(id: string) {
+    setExpandedFolders(prev => {
+      const next = new Set(prev)
+      if (next.has(id)) next.delete(id)
+      else next.add(id)
+      return next
+    })
+  }
+
   if (!mounted) {
     return (
       <div className="flex h-screen items-center justify-center">
@@ -3503,6 +3767,7 @@ export default function NotesPage() {
           <div className="w-60 h-full">
             <Sidebar
               notes={filteredNotes}
+              allNotes={notes}
               activeId={activeId}
               search={search}
               onSearch={setSearch}
@@ -3514,6 +3779,13 @@ export default function NotesPage() {
               onDeletePerson={deletePerson}
               objectTypes={customObjectTypes}
               onCreateObjectType={createObjectType}
+              folders={folders}
+              expandedFolders={expandedFolders}
+              onToggleFolder={toggleFolder}
+              onCreateFolder={createFolder}
+              onRenameFolder={renameFolder}
+              onDeleteFolder={deleteFolder}
+              onMoveNote={moveNoteToFolder}
             />
           </div>
         </div>
