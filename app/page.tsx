@@ -471,87 +471,167 @@ function GraphPanel({ notes, people, activeNoteId, onSelectNote }: {
   const edges = edgesRef.current
   const nodeMap = new Map(nodes.map(n => [n.id, n]))
 
+  // Hexagon path for tag nodes
+  const hex = (r: number) => Array.from({ length: 6 }, (_, i) => {
+    const a = (Math.PI / 3) * i - Math.PI / 6
+    return `${(r * Math.cos(a)).toFixed(2)},${(r * Math.sin(a)).toFixed(2)}`
+  }).join(' ')
+
+  const hoveredNode = nodes.find(n => n.id === hovered)
+
   return (
     <div
       ref={containerRef}
-      className="relative w-full h-full bg-slate-950 overflow-hidden select-none"
-      style={{ cursor: hovered ? 'pointer' : 'grab' }}
+      className="relative w-full h-full overflow-hidden select-none"
+      style={{ background: '#05090f', cursor: hovered ? 'pointer' : dragRef.current ? 'grabbing' : 'grab' }}
       onPointerDown={handlePointerDown}
       onPointerMove={handlePointerMove}
       onPointerUp={handlePointerUp}
       onPointerLeave={() => { setHovered(null); panRef.current.active = false }}
       onWheel={handleWheel}
     >
-      <svg width="100%" height="100%">
+      <svg width="100%" height="100%" style={{ position: 'absolute', inset: 0 }}>
         <defs>
-          <radialGradient id="bg-grad" cx="50%" cy="50%" r="70%">
-            <stop offset="0%" stopColor="#0f172a" />
-            <stop offset="100%" stopColor="#020617" />
+          {/* Background */}
+          <radialGradient id="g-bg" cx="48%" cy="42%" r="65%">
+            <stop offset="0%" stopColor="#0c1526" />
+            <stop offset="100%" stopColor="#03060d" />
           </radialGradient>
+          {/* Dot grid */}
+          <pattern id="g-dots" x="0" y="0" width="24" height="24" patternUnits="userSpaceOnUse">
+            <circle cx="0.5" cy="0.5" r="0.6" fill="#111e33" />
+          </pattern>
+          {/* Glow filters */}
+          <filter id="f-node" x="-60%" y="-60%" width="220%" height="220%">
+            <feGaussianBlur in="SourceGraphic" stdDeviation="5" result="blur" />
+            <feMerge><feMergeNode in="blur" /><feMergeNode in="SourceGraphic" /></feMerge>
+          </filter>
+          <filter id="f-halo" x="-100%" y="-100%" width="300%" height="300%">
+            <feGaussianBlur in="SourceGraphic" stdDeviation="10" />
+          </filter>
+          <filter id="f-edge" x="-10%" y="-200%" width="120%" height="500%">
+            <feGaussianBlur in="SourceGraphic" stdDeviation="2" result="blur" />
+            <feMerge><feMergeNode in="blur" /><feMergeNode in="SourceGraphic" /></feMerge>
+          </filter>
+          <style>{`
+            @keyframes gph-pulse { 0%,100%{r:38;opacity:.4} 50%{r:46;opacity:.15} }
+            @keyframes gph-flow  { from{stroke-dashoffset:20} to{stroke-dashoffset:0} }
+            .gph-ring { animation: gph-pulse 2.4s ease-in-out infinite; }
+            .gph-dash { animation: gph-flow .9s linear infinite; }
+          `}</style>
         </defs>
-        <rect width="100%" height="100%" fill="url(#bg-grad)" />
+
+        {/* Background layers */}
+        <rect width="100%" height="100%" fill="url(#g-bg)" />
+        <rect width="100%" height="100%" fill="url(#g-dots)" opacity="0.9" />
+
         <g transform={`translate(${pan.x},${pan.y}) scale(${zoom})`}>
-          {/* Edges */}
+
+          {/* ── Edges ── */}
           {edges.map((edge, i) => {
             const s = nodeMap.get(edge.source), t = nodeMap.get(edge.target)
             if (!s || !t) return null
-            const activeEdge = (s.noteId === activeNoteId || t.noteId === activeNoteId)
-            const hovEdge = (s.id === hovered || t.id === hovered)
+            const isActive = s.noteId === activeNoteId || t.noteId === activeNoteId
+            const isHov = s.id === hovered || t.id === hovered
+
+            if (isActive) return (
+              <g key={i}>
+                <line x1={s.x} y1={s.y} x2={t.x} y2={t.y}
+                  stroke="#6366f1" strokeWidth={4} strokeOpacity={0.18} filter="url(#f-edge)" />
+                <line x1={s.x} y1={s.y} x2={t.x} y2={t.y}
+                  stroke="#818cf8" strokeWidth={1.5} strokeOpacity={0.85}
+                  strokeDasharray="5 5" className="gph-dash" />
+              </g>
+            )
             return (
               <line key={i} x1={s.x} y1={s.y} x2={t.x} y2={t.y}
-                stroke={activeEdge ? '#818cf8' : hovEdge ? '#64748b' : '#1e293b'}
-                strokeWidth={activeEdge ? 2 : 1}
-                strokeOpacity={activeEdge ? 0.9 : hovEdge ? 0.7 : 0.6}
+                stroke={isHov ? '#1e3a5a' : '#0d1828'}
+                strokeWidth={isHov ? 1.5 : 1}
+                strokeOpacity={isHov ? 1 : 0.9}
               />
             )
           })}
-          {/* Tag nodes */}
+
+          {/* ── Tag nodes (hexagons) ── */}
           {nodes.filter(n => n.type === 'tag').map(node => {
             const isHov = node.id === hovered
             const connectedNotes = edges
               .filter(e => e.target === node.id || e.source === node.id)
               .map(e => e.source === node.id ? e.target : e.source)
-            const isActive = connectedNotes.some(nid => {
-              const n = nodeMap.get(nid)
-              return n?.noteId === activeNoteId
-            })
+            const isActive = connectedNotes.some(nid => nodeMap.get(nid)?.noteId === activeNoteId)
+            const r = isHov ? 20 : 17
+
             return (
-              <g key={node.id} transform={`translate(${node.x},${node.y})`} style={{ transition: 'none' }}>
-                <circle r={node.r * (isHov ? 1.2 : 1)} fill="#0f172a"
-                  stroke={isActive ? '#6366f1' : isHov ? '#475569' : '#1e293b'}
-                  strokeWidth={isActive ? 2 : isHov ? 1.5 : 1}
+              <g key={node.id} transform={`translate(${node.x},${node.y})`}>
+                {/* Ambient halo */}
+                {(isActive || isHov) && (
+                  <polygon points={hex(r + 7)}
+                    fill={isActive ? '#4f46e5' : '#1e3a5a'} fillOpacity={0.12}
+                    filter="url(#f-halo)" />
+                )}
+                {/* Hex body */}
+                <polygon points={hex(r)}
+                  fill={isActive ? '#0c1428' : '#080f1c'}
+                  stroke={isActive ? '#4f46e5' : isHov ? '#1e3a5a' : '#111f35'}
+                  strokeWidth={isActive ? 1.5 : 1}
                 />
-                <text textAnchor="middle" dominantBaseline="central" fontSize={8}
-                  fill={isActive ? '#a5b4fc' : '#64748b'}
-                  style={{ pointerEvents: 'none', fontFamily: 'monospace', userSelect: 'none' }}
+                {/* Label */}
+                <text textAnchor="middle" dominantBaseline="central" fontSize={7}
+                  fill={isActive ? '#818cf8' : isHov ? '#3d607a' : '#233248'}
+                  style={{ pointerEvents: 'none', fontFamily: 'ui-monospace,monospace', userSelect: 'none', letterSpacing: '.04em' }}
                 >
-                  #{node.label.length > 9 ? node.label.slice(0, 9) + '…' : node.label}
+                  #{node.label.length > 8 ? node.label.slice(0, 8) + '…' : node.label}
                 </text>
               </g>
             )
           })}
-          {/* Note nodes */}
+
+          {/* ── Note nodes ── */}
           {nodes.filter(n => n.type === 'note').map(node => {
             const isActive = node.noteId === activeNoteId
             const isHov = node.id === hovered
-            const scale = isHov ? 1.12 : 1
+            const r = node.r * (isHov ? 1.09 : 1)
+
             return (
               <g key={node.id} transform={`translate(${node.x},${node.y})`}>
+                {/* Ambient color halo */}
+                <circle r={r + 16} fill={node.color}
+                  fillOpacity={isActive ? 0.13 : isHov ? 0.07 : 0.03}
+                  filter="url(#f-halo)" />
+                {/* Animated pulse ring for active */}
                 {isActive && (
-                  <circle r={node.r * scale + 8} fill={node.color} fillOpacity={0.15} />
+                  <circle r={38} fill="none"
+                    stroke={node.color} strokeWidth={1.5} strokeOpacity={0.5}
+                    className="gph-ring" />
                 )}
-                <circle r={node.r * scale} fill={node.color}
-                  fillOpacity={isActive ? 1 : 0.8}
-                  stroke={isActive ? '#fff' : isHov ? node.color : 'transparent'}
-                  strokeWidth={isActive ? 2.5 : 1.5}
+                {/* Outer ring (active / hover) */}
+                {(isActive || isHov) && (
+                  <circle r={r + 5} fill="none"
+                    stroke={node.color}
+                    strokeWidth={isActive ? 1.5 : 1}
+                    strokeOpacity={isActive ? 0.7 : 0.35}
+                  />
+                )}
+                {/* Main circle */}
+                <circle r={r} fill={node.color}
+                  fillOpacity={isActive ? 0.92 : isHov ? 0.78 : 0.65}
+                  filter={isActive || isHov ? 'url(#f-node)' : undefined}
                 />
-                <text textAnchor="middle" y={-3} fontSize={15}
+                {/* Specular highlight */}
+                <circle r={r * 0.42} cx={-r * 0.18} cy={-r * 0.28}
+                  fill="white" fillOpacity={0.1} />
+                {/* Emoji */}
+                <text textAnchor="middle" y={1} fontSize={isHov ? 15 : 13}
+                  dominantBaseline="central"
                   style={{ pointerEvents: 'none', userSelect: 'none' }}
                 >
                   {node.emoji}
                 </text>
-                <text textAnchor="middle" y={node.r + 15} fontSize={9.5} fill="#e2e8f0"
-                  style={{ pointerEvents: 'none', userSelect: 'none' }}
+                {/* Label */}
+                <text textAnchor="middle" y={r + 14} fontSize={9}
+                  fill={isActive ? '#e2e8f0' : isHov ? '#94a3b8' : '#2d4060'}
+                  fontWeight={isActive ? '600' : '400'}
+                  style={{ pointerEvents: 'none', userSelect: 'none', fontFamily: 'ui-monospace,monospace', letterSpacing: '.01em' }}
                 >
                   {node.label.length > 13 ? node.label.slice(0, 13) + '…' : node.label}
                 </text>
@@ -560,33 +640,65 @@ function GraphPanel({ notes, people, activeNoteId, onSelectNote }: {
           })}
         </g>
       </svg>
-      {/* Legend */}
-      <div className="absolute bottom-3 left-3 flex items-center gap-3 text-[10px] text-slate-500">
-        <span className="flex items-center gap-1.5">
-          <span className="w-3 h-3 rounded-full bg-indigo-500 inline-block" /> Note
-        </span>
-        <span className="flex items-center gap-1.5">
-          <span className="w-2.5 h-2.5 rounded-full bg-slate-700 inline-block border border-slate-600" /> Tag
-        </span>
+
+      {/* ── Hover tooltip ── */}
+      {hoveredNode && (
+        <div className="absolute top-3 left-1/2 -translate-x-1/2 pointer-events-none"
+          style={{ zIndex: 10 }}>
+          <div className="flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] tracking-widest uppercase"
+            style={{ background: 'rgba(8,14,26,0.88)', border: '1px solid rgba(99,102,241,0.25)', color: '#6474a0', backdropFilter: 'blur(12px)', fontFamily: 'ui-monospace,monospace' }}>
+            {hoveredNode.type === 'note' && <span>{hoveredNode.emoji}</span>}
+            <span>{hoveredNode.type === 'tag' ? `#${hoveredNode.label}` : hoveredNode.label}</span>
+          </div>
+        </div>
+      )}
+
+      {/* ── Header ── */}
+      <div className="absolute top-3.5 left-3.5 flex items-center gap-1.5 pointer-events-none">
+        <span className="w-1.5 h-1.5 rounded-full bg-indigo-600 animate-pulse" />
+        <span className="text-[9px] tracking-[.18em] uppercase"
+          style={{ color: '#1a2a42', fontFamily: 'ui-monospace,monospace' }}>Graph</span>
       </div>
-      {/* Zoom controls */}
-      <div className="absolute top-3 right-3 flex flex-col gap-1">
-        {[
-          { label: '+', action: () => setZoom(z => Math.min(4, z * 1.25)) },
-          { label: '−', action: () => setZoom(z => Math.max(0.25, z * 0.8)) },
-          { label: '⌂', action: () => { setPan({ x: 0, y: 0 }); setZoom(1) } },
-        ].map(({ label, action }) => (
+
+      {/* ── Zoom controls ── */}
+      <div className="absolute bottom-4 right-3.5 flex flex-col gap-1">
+        {([
+          { label: '+', fn: () => setZoom(z => Math.min(4, z * 1.25)) },
+          { label: '−', fn: () => setZoom(z => Math.max(0.25, z * 0.8)) },
+          { label: '⌂', fn: () => { setPan({ x: 0, y: 0 }); setZoom(1) } },
+        ] as { label: string; fn: () => void }[]).map(({ label, fn }) => (
           <button key={label}
-            className="w-7 h-7 rounded bg-slate-800/80 text-slate-400 text-sm flex items-center justify-center hover:bg-slate-700 hover:text-white transition-colors"
-            onClick={e => { e.stopPropagation(); action() }}
+            className="w-6 h-6 rounded-md text-xs flex items-center justify-center transition-all"
+            style={{ background: 'rgba(10,16,28,0.75)', border: '1px solid #0d1a2e', color: '#1e3050', backdropFilter: 'blur(6px)' }}
+            onMouseEnter={e => { const el = e.currentTarget; el.style.color = '#6474a0'; el.style.borderColor = '#1e3050' }}
+            onMouseLeave={e => { const el = e.currentTarget; el.style.color = '#1e3050'; el.style.borderColor = '#0d1a2e' }}
+            onClick={e => { e.stopPropagation(); fn() }}
           >{label}</button>
         ))}
       </div>
-      <div className="absolute top-3 left-3 text-[10px] text-slate-600 font-mono tracking-wider">GRAPH VIEW</div>
+
+      {/* ── Legend ── */}
+      <div className="absolute bottom-4 left-3.5 flex items-center gap-2.5 pointer-events-none">
+        <span className="flex items-center gap-1 text-[8px] tracking-widest uppercase"
+          style={{ color: '#111f35', fontFamily: 'ui-monospace,monospace' }}>
+          <span className="w-2 h-2 rounded-full inline-block" style={{ background: '#1e2d4a' }} />
+          Note
+        </span>
+        <span className="flex items-center gap-1 text-[8px] tracking-widest uppercase"
+          style={{ color: '#111f35', fontFamily: 'ui-monospace,monospace' }}>
+          <span className="inline-block w-2 h-2" style={{ background: '#0e1826', clipPath: 'polygon(50% 0%,100% 25%,100% 75%,50% 100%,0% 75%,0% 25%)' }} />
+          Tag
+        </span>
+      </div>
+
+      {/* ── Empty state ── */}
       {nodes.length === 0 && (
-        <div className="absolute inset-0 flex flex-col items-center justify-center text-slate-600 text-xs gap-2">
-          <Network className="w-8 h-8 opacity-30" />
-          <span>Add tags to see connections</span>
+        <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 pointer-events-none">
+          <Network className="w-7 h-7" style={{ color: '#0d1a2e', opacity: .6 }} />
+          <span className="text-[9px] tracking-[.2em] uppercase"
+            style={{ color: '#0d1a2e', fontFamily: 'ui-monospace,monospace' }}>
+            Add tags to see connections
+          </span>
         </div>
       )}
     </div>
