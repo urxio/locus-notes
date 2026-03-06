@@ -47,6 +47,7 @@ export function GraphPanel({ notes, people, activeNoteId, onSelectNote, isExpand
     }
     const containerRef = useRef<HTMLDivElement>(null)
     const [size, setSize] = useState({ w: 340, h: 500 })
+    const sizeRef = useRef({ w: 340, h: 500 })
     const nodesRef = useRef<GNode[]>([])
     const edgesRef = useRef<GEdge[]>([])
     const [, forceRender] = useState(0)
@@ -64,28 +65,36 @@ export function GraphPanel({ notes, people, activeNoteId, onSelectNote, isExpand
         const ro = new ResizeObserver(entries => {
             for (const e of entries) {
                 const { width, height } = e.contentRect
-                // Defer setSize to avoid firing synchronously during React's commit phase
-                // (triggered by rapid graphWidth updates during drag)
-                if (width > 0 && height > 0) requestAnimationFrame(() => setSize({ w: width, h: height }))
+                if (width > 0 && height > 0) {
+                    sizeRef.current = { w: width, h: height }
+                    // Wake up the simulation to adjust to the new dimensions
+                    tickCountRef.current = Math.max(0, tickCountRef.current - 50)
+                    requestAnimationFrame(() => setSize({ w: width, h: height }))
+                }
             }
         })
         ro.observe(el)
         const rect = el.getBoundingClientRect()
-        if (rect.width > 0) setSize({ w: rect.width, h: rect.height })
+        if (rect.width > 0) {
+            sizeRef.current = { w: rect.width, h: rect.height }
+            setSize({ w: rect.width, h: rect.height })
+        }
         return () => ro.disconnect()
     }, [])
 
     const graphKey = useMemo(
-        () => notes.map(n => `${n.id}:${n.title}:${n.tags.join(',')}`).join('|') + '|p:' + people.map(p => p.id).join(','),
+        () => notes.map(n => `${n.id}:${n.title}:${n.emoji}:${n.color}:${n.tags.join(',')}:${n.blocks.map(b => b.content + (b.expandedContent || '')).join('')}`).join('|') + '|p:' + people.map(p => p.id).join(','),
         [notes, people]
     )
 
     useEffect(() => {
-        const { nodes, edges } = buildGraph(notes, people, size.w, size.h)
+        const existingMap = new Map(nodesRef.current.map(n => [n.id, n]))
+        const { nodes, edges } = buildGraph(notes, people, sizeRef.current.w, sizeRef.current.h, existingMap)
         nodesRef.current = nodes
         edgesRef.current = edges
+        // Only reset the simulation when structure changes significantly
         tickCountRef.current = 0
-    }, [graphKey, size])
+    }, [graphKey])
 
     useEffect(() => {
         function animate() {

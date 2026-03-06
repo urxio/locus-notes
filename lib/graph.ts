@@ -1,6 +1,6 @@
 import { Note, Person, GNode, GEdge } from "./types"
 
-export function buildGraph(notes: Note[], people: Person[], w: number, h: number): { nodes: GNode[]; edges: GEdge[] } {
+export function buildGraph(notes: Note[], people: Person[], w: number, h: number, existingNodes?: Map<string, GNode>): { nodes: GNode[]; edges: GEdge[] } {
     const nodes: GNode[] = []
     const edges: GEdge[] = []
     const tagSet = new Set<string>()
@@ -8,24 +8,28 @@ export function buildGraph(notes: Note[], people: Person[], w: number, h: number
     const allTags = [...tagSet]
     const cx = w / 2, cy = h / 2
     notes.forEach((note, i) => {
+        const id = `note:${note.id}`
+        const existing = existingNodes?.get(id)
         const a = (i / Math.max(notes.length, 1)) * Math.PI * 2
         const r = Math.min(w, h) * 0.30
         nodes.push({
-            id: `note:${note.id}`, type: 'note', label: note.title || 'Untitled',
+            id, type: 'note', label: note.title || 'Untitled',
             color: note.color, emoji: note.emoji,
-            x: cx + Math.cos(a) * r + (Math.random() - 0.5) * 60,
-            y: cy + Math.sin(a) * r + (Math.random() - 0.5) * 60,
-            vx: 0, vy: 0, r: 65, noteId: note.id,
+            x: existing ? existing.x : cx + Math.cos(a) * r + (Math.random() - 0.5) * 60,
+            y: existing ? existing.y : cy + Math.sin(a) * r + (Math.random() - 0.5) * 60,
+            vx: existing ? existing.vx : 0, vy: existing ? existing.vy : 0, r: 65, noteId: note.id,
         })
     })
     allTags.forEach((tag, i) => {
+        const id = `tag:${tag}`
+        const existing = existingNodes?.get(id)
         const a = (i / Math.max(allTags.length, 1)) * Math.PI * 2
         const r = Math.min(w, h) * 0.12
         nodes.push({
-            id: `tag:${tag}`, type: 'tag', label: tag, color: '#475569',
-            x: cx + Math.cos(a) * r + (Math.random() - 0.5) * 30,
-            y: cy + Math.sin(a) * r + (Math.random() - 0.5) * 30,
-            vx: 0, vy: 0, r: 38,
+            id, type: 'tag', label: tag, color: '#475569',
+            x: existing ? existing.x : cx + Math.cos(a) * r + (Math.random() - 0.5) * 30,
+            y: existing ? existing.y : cy + Math.sin(a) * r + (Math.random() - 0.5) * 30,
+            vx: existing ? existing.vx : 0, vy: existing ? existing.vy : 0, r: 38,
         })
     })
     notes.forEach(note => note.tags.forEach(tag =>
