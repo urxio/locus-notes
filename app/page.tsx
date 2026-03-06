@@ -3204,44 +3204,55 @@ function NavRail({ folders, selectedFolderId, onSelectFolder, people, objectType
   const visibleTypes = allTypes.filter(t => t.isBuiltin || people.some(p => (p.typeId ?? 'person') === t.id))
 
   return (
-    <div className="flex flex-col h-full border-r border-stone-200 dark:border-zinc-800 bg-stone-100 dark:bg-zinc-950">
-      {/* Logo row */}
-      <div className="px-4 py-3 border-b border-stone-200 dark:border-zinc-800 flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <div className="w-6 h-6 rounded-md bg-orange-600 flex items-center justify-center flex-shrink-0">
-            <BookOpen className="w-3.5 h-3.5 text-white" />
+    <div className="flex flex-col h-full bg-[#FAFAF8] dark:bg-zinc-900">
+      {/* Identity header */}
+      <div className="px-5 pt-5 pb-4">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-orange-500 to-orange-700 flex items-center justify-center flex-shrink-0 shadow-sm">
+              <span className="text-white font-bold text-[13px] tracking-tight">L</span>
+            </div>
+            <div>
+              <p className="font-semibold text-[13px] text-stone-800 dark:text-zinc-100 leading-none">Locus</p>
+              <p className="text-[10px] text-stone-400 dark:text-zinc-600 mt-0.5">Notes</p>
+            </div>
           </div>
-          <span className="font-semibold text-[13px] text-stone-800 dark:text-zinc-100 tracking-tight">Locus</span>
+          <button onClick={onCreate} title="New note"
+            className="w-7 h-7 rounded-xl bg-stone-100 dark:bg-zinc-800 hover:bg-orange-100 dark:hover:bg-zinc-700 flex items-center justify-center transition-all group">
+            <Plus className="w-3.5 h-3.5 text-stone-400 dark:text-zinc-500 group-hover:text-orange-600 dark:group-hover:text-orange-400 transition-colors" />
+          </button>
         </div>
-        <button onClick={onCreate} title="New note"
-          className="w-6 h-6 rounded-md bg-orange-600 hover:bg-orange-700 flex items-center justify-center transition-colors">
-          <Plus className="w-3.5 h-3.5 text-white" />
-        </button>
       </div>
 
       <ScrollArea className="flex-1">
-        <div className="py-2 px-2">
+        <div className="px-3 pb-4 space-y-1">
           {/* All Notes */}
           <button
             onClick={() => { onSelectFolder(null); onTagFilter(null) }}
             className={cn(
-              "w-full flex items-center gap-2.5 px-2.5 py-1.5 rounded-md text-[13px] transition-colors text-left mb-0.5",
+              "w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-[13px] transition-all text-left",
               selectedFolderId === null && !activeTag
                 ? "bg-white dark:bg-zinc-800 text-stone-900 dark:text-zinc-100 font-medium shadow-sm"
-                : "text-stone-500 dark:text-zinc-400 hover:bg-stone-200/60 dark:hover:bg-zinc-800/60 hover:text-stone-800 dark:hover:text-zinc-200"
+                : "text-stone-500 dark:text-zinc-400 hover:bg-white/70 dark:hover:bg-zinc-800/50 hover:text-stone-800 dark:hover:text-zinc-200"
             )}
           >
-            <FileText className="w-3.5 h-3.5 flex-shrink-0" />
-            <span className="flex-1">All Notes</span>
-            <span className="font-mono text-[9px] text-stone-300 dark:text-zinc-700">{notes.length}</span>
+            <div className={cn("w-6 h-6 rounded-lg flex items-center justify-center flex-shrink-0 transition-colors",
+              selectedFolderId === null && !activeTag ? "bg-orange-100 dark:bg-orange-950/50" : "bg-stone-100 dark:bg-zinc-700/60"
+            )}>
+              <FileText className={cn("w-3.5 h-3.5 transition-colors",
+                selectedFolderId === null && !activeTag ? "text-orange-600 dark:text-orange-400" : "text-stone-400 dark:text-zinc-500"
+              )} />
+            </div>
+            <span className="flex-1 text-[13px]">All Notes</span>
+            <span className="text-[10px] font-mono text-stone-300 dark:text-zinc-700 tabular-nums">{notes.length}</span>
           </button>
 
-          {/* Folders section */}
-          <div className="mt-4">
-            <div className="flex items-center justify-between px-2.5 mb-1">
-              <span className="font-mono text-[9px] uppercase tracking-[0.15em] text-stone-400 dark:text-zinc-600">Pages</span>
+          {/* Folders */}
+          <div className="pt-3">
+            <div className="flex items-center justify-between px-1 mb-1.5">
+              <span className="font-mono text-[9px] uppercase tracking-[0.18em] text-stone-300 dark:text-zinc-700">Pages</span>
               <button onClick={() => onCreateFolder()} title="New folder"
-                className="text-stone-300 hover:text-orange-600 dark:text-zinc-700 dark:hover:text-orange-500 transition-colors">
+                className="text-stone-300 hover:text-orange-500 dark:text-zinc-700 dark:hover:text-orange-500 transition-colors">
                 <FolderPlus className="w-3 h-3" />
               </button>
             </div>
@@ -3255,13 +3266,17 @@ function NavRail({ folders, selectedFolderId, onSelectFolder, people, objectType
                     <button
                       onClick={() => { onSelectFolder(folder.id); onTagFilter(null) }}
                       className={cn(
-                        "flex-1 min-w-0 flex items-center gap-2 px-2.5 py-1.5 rounded-md text-[13px] transition-colors text-left",
+                        "flex-1 min-w-0 flex items-center gap-2.5 px-3 py-2 rounded-xl text-[13px] transition-all text-left",
                         isSelected
                           ? "bg-white dark:bg-zinc-800 text-stone-900 dark:text-zinc-100 font-medium shadow-sm"
-                          : "text-stone-500 dark:text-zinc-400 hover:bg-stone-200/60 dark:hover:bg-zinc-800/60 hover:text-stone-800 dark:hover:text-zinc-200"
+                          : "text-stone-500 dark:text-zinc-400 hover:bg-white/70 dark:hover:bg-zinc-800/50 hover:text-stone-800 dark:hover:text-zinc-200"
                       )}
                     >
-                      <span className="text-[11px] flex-shrink-0">📁</span>
+                      <div className={cn("w-6 h-6 rounded-lg flex items-center justify-center flex-shrink-0 transition-colors",
+                        isSelected ? "bg-orange-100 dark:bg-orange-950/50" : "bg-stone-100 dark:bg-zinc-700/60"
+                      )}>
+                        <span className="text-[10px]">📁</span>
+                      </div>
                       {isEditing ? (
                         <input autoFocus value={editingName}
                           onChange={e => setEditingName(e.target.value)}
@@ -3272,22 +3287,22 @@ function NavRail({ folders, selectedFolderId, onSelectFolder, people, objectType
                             e.stopPropagation()
                           }}
                           onClick={e => e.stopPropagation()}
-                          className="flex-1 min-w-0 text-[13px] bg-transparent border-b border-orange-500 outline-none"
+                          className="flex-1 min-w-0 text-[13px] bg-transparent border-b border-orange-400 outline-none"
                         />
                       ) : (
                         <span className="truncate flex-1">{folder.name}</span>
                       )}
                       {count > 0 && !isEditing && (
-                        <span className="font-mono text-[9px] text-stone-300 dark:text-zinc-700 flex-shrink-0">{count}</span>
+                        <span className="text-[10px] font-mono text-stone-300 dark:text-zinc-700 flex-shrink-0">{count}</span>
                       )}
                     </button>
-                    <div className="flex opacity-0 group-hover/folder:opacity-100 transition-opacity flex-shrink-0">
+                    <div className="flex opacity-0 group-hover/folder:opacity-100 transition-opacity flex-shrink-0 ml-0.5">
                       <button onClick={() => { setEditingFolderId(folder.id); setEditingName(folder.name) }}
-                        className="p-1 text-stone-300 hover:text-stone-600 dark:text-zinc-700 dark:hover:text-zinc-300 transition-colors">
+                        className="p-1 text-stone-300 hover:text-stone-500 dark:text-zinc-700 dark:hover:text-zinc-400 transition-colors">
                         <Pencil className="w-2.5 h-2.5" />
                       </button>
                       <button onClick={() => onDeleteFolder(folder.id)}
-                        className="p-1 text-stone-300 hover:text-red-500 dark:text-zinc-700 dark:hover:text-red-400 transition-colors">
+                        className="p-1 text-stone-300 hover:text-red-400 dark:text-zinc-700 dark:hover:text-red-400 transition-colors">
                         <Trash2 className="w-2.5 h-2.5" />
                       </button>
                     </div>
@@ -3296,7 +3311,7 @@ function NavRail({ folders, selectedFolderId, onSelectFolder, people, objectType
               })}
               {folders.length === 0 && (
                 <button onClick={() => onCreateFolder()}
-                  className="w-full flex items-center gap-2 px-2.5 py-1.5 rounded-md text-[12px] text-stone-300 dark:text-zinc-700 hover:text-orange-600 dark:hover:text-orange-500 hover:bg-stone-200/40 transition-colors">
+                  className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-[12px] text-stone-300 dark:text-zinc-700 hover:text-orange-500 hover:bg-white/70 transition-all">
                   <Plus className="w-3 h-3" />
                   New folder
                 </button>
@@ -3304,20 +3319,20 @@ function NavRail({ folders, selectedFolderId, onSelectFolder, people, objectType
             </div>
           </div>
 
-          {/* Objects section */}
+          {/* Objects */}
           {visibleTypes.length > 0 && (
-            <div className="mt-5">
-              <div className="px-2.5 mb-1">
-                <span className="font-mono text-[9px] uppercase tracking-[0.15em] text-stone-400 dark:text-zinc-600">Objects</span>
+            <div className="pt-3">
+              <div className="px-1 mb-1.5">
+                <span className="font-mono text-[9px] uppercase tracking-[0.18em] text-stone-300 dark:text-zinc-700">Objects</span>
               </div>
-              <div className="space-y-3">
+              <div className="space-y-2">
                 {visibleTypes.map(objType => {
                   const typeObjects = people.filter(p => (p.typeId ?? 'person') === objType.id)
                   return (
                     <div key={objType.id}>
-                      <div className="flex items-center gap-1.5 px-2.5 mb-0.5">
+                      <div className="flex items-center gap-1.5 px-1 mb-0.5">
                         <span className="text-[10px]">{objType.emoji}</span>
-                        <span className="font-mono text-[9px] uppercase tracking-[0.12em] text-stone-400 dark:text-zinc-600">{objType.name}</span>
+                        <span className="font-mono text-[9px] uppercase tracking-[0.12em] text-stone-300 dark:text-zinc-700">{objType.name}</span>
                       </div>
                       <div className="space-y-0.5">
                         {typeObjects.map(person => (
@@ -3325,23 +3340,23 @@ function NavRail({ folders, selectedFolderId, onSelectFolder, people, objectType
                             <button
                               onClick={() => person.noteId && onSelect(person.noteId)}
                               className={cn(
-                                "flex-1 min-w-0 flex items-center gap-2 px-2.5 py-1.5 rounded-md text-[13px] transition-colors text-left",
+                                "flex-1 min-w-0 flex items-center gap-2.5 px-3 py-2 rounded-xl text-[13px] transition-all text-left",
                                 person.noteId && activeId === person.noteId
                                   ? "bg-white dark:bg-zinc-800 text-stone-900 dark:text-zinc-100 font-medium shadow-sm"
-                                  : "text-stone-500 dark:text-zinc-400 hover:bg-stone-200/60 dark:hover:bg-zinc-800/60 hover:text-stone-800 dark:hover:text-zinc-200"
+                                  : "text-stone-500 dark:text-zinc-400 hover:bg-white/70 dark:hover:bg-zinc-800/50"
                               )}
                             >
                               <span className="text-[11px] flex-shrink-0">{person.emoji}</span>
                               <span className="truncate">{person.name}</span>
                             </button>
                             <button onClick={() => onDeletePerson(person.id)}
-                              className="opacity-0 group-hover/person:opacity-100 transition-opacity p-1 text-stone-300 hover:text-red-500 dark:text-zinc-700 dark:hover:text-red-400 flex-shrink-0">
+                              className="opacity-0 group-hover/person:opacity-100 transition-opacity p-1 text-stone-300 hover:text-red-400 dark:text-zinc-700 dark:hover:text-red-400 flex-shrink-0">
                               <X className="w-2.5 h-2.5" />
                             </button>
                           </div>
                         ))}
                         {typeObjects.length === 0 && (
-                          <p className="px-2.5 text-[11px] text-stone-300 dark:text-zinc-700 italic">No {objType.name.toLowerCase()}s yet</p>
+                          <p className="px-3 text-[11px] text-stone-300 dark:text-zinc-700 italic">No {objType.name.toLowerCase()}s yet</p>
                         )}
                       </div>
                     </div>
@@ -3351,13 +3366,13 @@ function NavRail({ folders, selectedFolderId, onSelectFolder, people, objectType
             </div>
           )}
 
-          {/* Tags section */}
+          {/* Tags */}
           {allTags.length > 0 && (
-            <div className="mt-5">
-              <div className="flex items-center justify-between px-2.5 mb-1">
-                <span className="font-mono text-[9px] uppercase tracking-[0.15em] text-stone-400 dark:text-zinc-600">Tags</span>
+            <div className="pt-3">
+              <div className="flex items-center justify-between px-1 mb-1.5">
+                <span className="font-mono text-[9px] uppercase tracking-[0.18em] text-stone-300 dark:text-zinc-700">Tags</span>
                 {activeTag && (
-                  <button onClick={() => onTagFilter(null)} className="font-mono text-[9px] text-orange-600 hover:underline">clear</button>
+                  <button onClick={() => onTagFilter(null)} className="font-mono text-[9px] text-orange-500 hover:underline">clear</button>
                 )}
               </div>
               <div className="space-y-0.5">
@@ -3365,13 +3380,19 @@ function NavRail({ folders, selectedFolderId, onSelectFolder, people, objectType
                   <button key={tag}
                     onClick={() => { onTagFilter(activeTag === tag ? null : tag); onSelectFolder(null) }}
                     className={cn(
-                      "w-full flex items-center gap-2 px-2.5 py-1.5 rounded-md text-[13px] transition-colors text-left",
+                      "w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-[13px] transition-all text-left",
                       activeTag === tag
                         ? "bg-white dark:bg-zinc-800 text-stone-900 dark:text-zinc-100 font-medium shadow-sm"
-                        : "text-stone-500 dark:text-zinc-400 hover:bg-stone-200/60 dark:hover:bg-zinc-800/60"
+                        : "text-stone-500 dark:text-zinc-400 hover:bg-white/70 dark:hover:bg-zinc-800/50"
                     )}
                   >
-                    <Hash className="w-3 h-3 flex-shrink-0 text-stone-300 dark:text-zinc-700" />
+                    <div className={cn("w-6 h-6 rounded-lg flex items-center justify-center flex-shrink-0 transition-colors",
+                      activeTag === tag ? "bg-orange-100 dark:bg-orange-950/50" : "bg-stone-100 dark:bg-zinc-700/60"
+                    )}>
+                      <Hash className={cn("w-3 h-3 transition-colors",
+                        activeTag === tag ? "text-orange-600 dark:text-orange-400" : "text-stone-400 dark:text-zinc-500"
+                      )} />
+                    </div>
                     <span className="font-mono text-[12px] truncate">{tag}</span>
                   </button>
                 ))}
@@ -3382,14 +3403,14 @@ function NavRail({ folders, selectedFolderId, onSelectFolder, people, objectType
       </ScrollArea>
 
       {/* Footer */}
-      <div className="px-3 py-2 border-t border-stone-200 dark:border-zinc-800 flex items-center justify-between">
+      <div className="px-4 py-3 flex items-center justify-between">
         <ThemeSwitcher />
         <button onClick={onToggleGraph}
           className={cn(
-            "flex items-center gap-1.5 px-2 py-1 rounded text-[10px] font-mono uppercase tracking-wider transition-colors",
+            "flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-[10px] font-mono uppercase tracking-wider transition-all",
             graphOpen
-              ? "text-orange-600 bg-orange-50 dark:bg-orange-950/20 dark:text-orange-400"
-              : "text-stone-400 dark:text-zinc-600 hover:text-stone-600 dark:hover:text-zinc-400 hover:bg-stone-200/50"
+              ? "text-orange-600 bg-orange-100/80 dark:bg-orange-950/30 dark:text-orange-400 shadow-sm"
+              : "text-stone-400 dark:text-zinc-600 hover:text-stone-600 dark:hover:text-zinc-400 hover:bg-white/80"
           )}
         >
           <Network className="w-3 h-3" />
@@ -3437,98 +3458,109 @@ function NoteListPanel({ notes, folders, selectedFolderId, activeTag, activeId, 
   }
 
   return (
-    <div className="flex flex-col h-full border-r border-stone-200 dark:border-zinc-800 bg-stone-50 dark:bg-zinc-900">
+    <div className="flex flex-col h-full bg-white dark:bg-zinc-900">
       {/* Header */}
-      <div className="px-4 py-3 border-b border-stone-200 dark:border-zinc-800">
-        <div className="flex items-center justify-between mb-2.5">
-          <span className="font-mono text-[10px] uppercase tracking-[0.15em] text-stone-400 dark:text-zinc-500 truncate">{label}</span>
+      <div className="px-4 pt-5 pb-3">
+        <div className="flex items-center justify-between mb-3">
+          <h2 className="font-semibold text-[15px] text-stone-800 dark:text-zinc-100 truncate">{label}</h2>
           <div className="flex items-center gap-2 flex-shrink-0 ml-2">
-            <span className="font-mono text-[10px] text-stone-300 dark:text-zinc-700">{notes.length}</span>
+            <span className="text-[11px] font-mono text-stone-300 dark:text-zinc-700 tabular-nums">{notes.length}</span>
             <button onClick={onCreate} title="New note"
-              className="w-5 h-5 rounded-sm bg-orange-600 hover:bg-orange-700 flex items-center justify-center transition-colors">
-              <Plus className="w-3 h-3 text-white" />
+              className="w-7 h-7 rounded-xl bg-orange-600 hover:bg-orange-700 flex items-center justify-center transition-colors shadow-sm">
+              <Plus className="w-3.5 h-3.5 text-white" />
             </button>
           </div>
         </div>
+        {/* Pill search */}
         <div className="relative">
-          <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3 h-3 text-stone-300 dark:text-zinc-600" />
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3 h-3 text-stone-300 dark:text-zinc-600" />
           <input value={search} onChange={e => onSearch(e.target.value)} placeholder="Search…"
-            className="w-full pl-7 pr-3 py-1.5 rounded-md bg-stone-100 dark:bg-zinc-800 text-[12px] text-stone-700 dark:text-zinc-300 placeholder-stone-300 dark:placeholder-zinc-600 border border-stone-200 dark:border-zinc-700 outline-none focus:border-stone-400 dark:focus:border-zinc-500 transition-colors"
+            className="w-full pl-8 pr-4 py-2 rounded-xl bg-stone-100 dark:bg-zinc-800 text-[12px] text-stone-700 dark:text-zinc-300 placeholder-stone-300 dark:placeholder-zinc-600 border-0 outline-none focus:ring-2 focus:ring-stone-200 dark:focus:ring-zinc-700 transition-all"
           />
         </div>
       </div>
 
-      {/* Note list */}
+      {/* Note cards */}
       <ScrollArea className="flex-1">
         {notes.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-16 gap-3">
-            <FileText className="w-8 h-8 text-stone-200 dark:text-zinc-800" />
+            <div className="w-12 h-12 rounded-2xl bg-stone-50 dark:bg-zinc-800 flex items-center justify-center">
+              <FileText className="w-5 h-5 text-stone-200 dark:text-zinc-700" />
+            </div>
             <p className="font-mono text-[9px] uppercase tracking-[0.15em] text-stone-300 dark:text-zinc-700">No notes</p>
           </div>
-        ) : notes.map(note => {
-          const isActive = note.id === activeId
-          const preview = getPreview(note)
-          return (
-            <button key={note.id}
-              onClick={() => onSelect(note.id)}
-              onContextMenu={e => { e.preventDefault(); e.stopPropagation(); setCtxMenu({ x: e.clientX, y: e.clientY, noteId: note.id }) }}
-              className={cn(
-                "w-full text-left px-4 py-3 border-b border-stone-100 dark:border-zinc-800/50 transition-all relative",
-                isActive ? "bg-white dark:bg-zinc-800" : "hover:bg-white/60 dark:hover:bg-zinc-800/40"
-              )}
-            >
-              {isActive && <div className="absolute left-0 top-3 bottom-3 w-[2px] bg-orange-600 rounded-r-full" />}
-              <div className="flex items-start justify-between gap-2 mb-1">
-                <div className="flex items-center gap-1.5 min-w-0">
-                  <span className="text-sm leading-none flex-shrink-0">{note.emoji}</span>
-                  <span className={cn(
-                    "text-[13px] leading-snug truncate",
-                    isActive ? "font-semibold text-stone-900 dark:text-zinc-100" : "font-medium text-stone-700 dark:text-zinc-300"
-                  )}>
-                    {note.title || 'Untitled'}
-                  </span>
-                </div>
-                <span className="font-mono text-[9px] text-stone-300 dark:text-zinc-700 flex-shrink-0 mt-0.5">{formatDate(note.updatedAt)}</span>
-              </div>
-              {preview && (
-                <p className="text-[11px] text-stone-400 dark:text-zinc-600 line-clamp-2 leading-relaxed pl-[22px]">{preview}</p>
-              )}
-              {note.tags.length > 0 && (
-                <div className="flex gap-2 mt-1 pl-[22px]">
-                  {note.tags.slice(0, 3).map(tag => (
-                    <span key={tag} className="font-mono text-[9px] text-stone-300 dark:text-zinc-700">#{tag}</span>
-                  ))}
-                  {note.tags.length > 3 && <span className="font-mono text-[9px] text-stone-300 dark:text-zinc-700">+{note.tags.length - 3}</span>}
-                </div>
-              )}
-            </button>
-          )
-        })}
+        ) : (
+          <div className="px-3 pb-3 space-y-2">
+            {notes.map(note => {
+              const isActive = note.id === activeId
+              const preview = getPreview(note)
+              return (
+                <button key={note.id}
+                  onClick={() => onSelect(note.id)}
+                  onContextMenu={e => { e.preventDefault(); e.stopPropagation(); setCtxMenu({ x: e.clientX, y: e.clientY, noteId: note.id }) }}
+                  className={cn(
+                    "w-full text-left p-3 rounded-2xl transition-all",
+                    isActive
+                      ? "bg-stone-100 dark:bg-zinc-800 shadow-sm ring-1 ring-stone-200/80 dark:ring-zinc-700/50"
+                      : "bg-stone-50/70 dark:bg-zinc-800/30 hover:bg-stone-100/80 dark:hover:bg-zinc-800/60"
+                  )}
+                >
+                  <div className="flex items-start justify-between gap-2 mb-1.5">
+                    <div className="flex items-center gap-2 min-w-0">
+                      <div className="w-7 h-7 rounded-xl flex items-center justify-center flex-shrink-0"
+                        style={{ backgroundColor: note.color + '22' }}>
+                        <span className="text-sm leading-none">{note.emoji}</span>
+                      </div>
+                      <span className={cn(
+                        "text-[13px] leading-snug truncate",
+                        isActive ? "font-semibold text-stone-900 dark:text-zinc-100" : "font-medium text-stone-700 dark:text-zinc-300"
+                      )}>
+                        {note.title || 'Untitled'}
+                      </span>
+                    </div>
+                    <span className="font-mono text-[9px] text-stone-300 dark:text-zinc-600 flex-shrink-0 mt-1">{formatDate(note.updatedAt)}</span>
+                  </div>
+                  {preview && (
+                    <p className="text-[11px] text-stone-400 dark:text-zinc-600 line-clamp-2 leading-relaxed pl-9">{preview}</p>
+                  )}
+                  {note.tags.length > 0 && (
+                    <div className="flex gap-1 mt-2 pl-9 flex-wrap">
+                      {note.tags.slice(0, 2).map(tag => (
+                        <span key={tag} className="font-mono text-[9px] px-1.5 py-0.5 rounded-full bg-white dark:bg-zinc-700/60 text-stone-400 dark:text-zinc-500 ring-1 ring-stone-100 dark:ring-zinc-700">#{tag}</span>
+                      ))}
+                      {note.tags.length > 2 && <span className="font-mono text-[9px] text-stone-300 dark:text-zinc-700">+{note.tags.length - 2}</span>}
+                    </div>
+                  )}
+                </button>
+              )
+            })}
+          </div>
+        )}
       </ScrollArea>
 
-      {/* Context menu — move note to folder */}
+      {/* Context menu */}
       {ctxMenu && createPortal(
         <>
           <div className="fixed inset-0 z-40" onClick={() => setCtxMenu(null)} />
-          <div className="fixed z-50 bg-white dark:bg-zinc-900 border border-stone-200 dark:border-zinc-700 rounded-lg shadow-xl py-1 min-w-[200px] text-sm"
+          <div className="fixed z-50 bg-white dark:bg-zinc-900 rounded-2xl shadow-xl border border-stone-100 dark:border-zinc-800 py-2 min-w-[200px] overflow-hidden"
             style={{ left: ctxMenu.x, top: ctxMenu.y }}>
-            <div className="px-3 py-1.5 font-mono text-[9px] uppercase tracking-[0.15em] text-stone-400 dark:text-zinc-600 border-b border-stone-100 dark:border-zinc-800 mb-1">
+            <div className="px-4 py-1.5 font-mono text-[9px] uppercase tracking-[0.15em] text-stone-300 dark:text-zinc-700 mb-1">
               Move to folder
             </div>
             <button onClick={() => { onMoveNote(ctxMenu.noteId, null); setCtxMenu(null) }}
-              className="w-full text-left px-3 py-1.5 text-[12px] hover:bg-stone-50 dark:hover:bg-zinc-800 flex items-center gap-2 text-stone-600 dark:text-zinc-400 transition-colors">
+              className="w-full text-left px-4 py-2 text-[12px] hover:bg-stone-50 dark:hover:bg-zinc-800 flex items-center gap-2 text-stone-600 dark:text-zinc-400 transition-colors">
               <FileText className="w-3.5 h-3.5 text-stone-300 flex-shrink-0" />
               Root (no folder)
             </button>
             {folders.map(folder => (
               <button key={folder.id}
                 onClick={() => { onMoveNote(ctxMenu.noteId, folder.id); setCtxMenu(null) }}
-                className="w-full text-left px-3 py-1.5 text-[12px] hover:bg-stone-50 dark:hover:bg-zinc-800 flex items-center gap-2 text-stone-600 dark:text-zinc-400 transition-colors">
+                className="w-full text-left px-4 py-2 text-[12px] hover:bg-stone-50 dark:hover:bg-zinc-800 flex items-center gap-2 text-stone-600 dark:text-zinc-400 transition-colors">
                 <span className="text-[11px] flex-shrink-0">📁</span>
                 <span className="truncate">{folder.name}</span>
               </button>
             ))}
-            {folders.length === 0 && <p className="px-3 py-2 text-[11px] text-stone-300 italic">No folders yet</p>}
+            {folders.length === 0 && <p className="px-4 py-2 text-[11px] text-stone-300 italic">No folders yet</p>}
           </div>
         </>,
         document.body
@@ -4094,10 +4126,10 @@ export default function NotesPage() {
 
   return (
     <TooltipProvider delayDuration={400}>
-      <div className="flex h-screen overflow-hidden">
+      <div className="flex h-screen overflow-hidden bg-[#EEEDEA] dark:bg-zinc-950 p-3 gap-3">
 
-        {/* Col 1: Nav Rail */}
-        <div className="w-[220px] flex-shrink-0">
+        {/* Col 1: Nav Rail card */}
+        <div className="w-[220px] flex-shrink-0 rounded-2xl overflow-hidden shadow-sm">
           <NavRail
             folders={folders}
             selectedFolderId={selectedFolderId}
@@ -4120,8 +4152,8 @@ export default function NotesPage() {
           />
         </div>
 
-        {/* Col 2: Note List Panel */}
-        <div className="w-[280px] flex-shrink-0">
+        {/* Col 2: Note List card */}
+        <div className="w-[280px] flex-shrink-0 rounded-2xl overflow-hidden shadow-sm">
           <NoteListPanel
             notes={panelNotes}
             folders={folders}
@@ -4136,9 +4168,9 @@ export default function NotesPage() {
           />
         </div>
 
-        {/* Col 3: Editor + optional Graph */}
-        <div className="flex-1 min-w-0 flex overflow-hidden">
-          <div className="flex-1 overflow-hidden bg-white dark:bg-zinc-950">
+        {/* Col 3: Editor card + optional Graph card */}
+        <div className="flex-1 min-w-0 flex gap-3 overflow-hidden">
+          <div className="flex-1 overflow-hidden rounded-2xl shadow-sm bg-white dark:bg-zinc-900">
             {activeNote ? (
               <NoteEditor
                 key={activeNote.id}
@@ -4154,24 +4186,26 @@ export default function NotesPage() {
               />
             ) : (
               <div className="flex flex-col items-center justify-center h-full gap-4">
-                <BookOpen className="w-10 h-10 text-stone-200 dark:text-zinc-800" />
+                <div className="w-14 h-14 rounded-2xl bg-stone-50 dark:bg-zinc-800 flex items-center justify-center">
+                  <BookOpen className="w-6 h-6 text-stone-200 dark:text-zinc-700" />
+                </div>
                 <div className="text-center">
                   <p className="font-mono text-[10px] uppercase tracking-[0.15em] text-stone-300 dark:text-zinc-700">No page selected</p>
                   <p className="text-[13px] mt-1 text-stone-300 dark:text-zinc-700">Select a note or create a new one</p>
                 </div>
                 <button onClick={createNote}
-                  className="flex items-center gap-2 px-4 py-2 rounded-md bg-orange-600 hover:bg-orange-700 text-white text-[13px] transition-colors">
+                  className="flex items-center gap-2 px-4 py-2 rounded-xl bg-orange-600 hover:bg-orange-700 text-white text-[13px] transition-colors shadow-sm">
                   <Plus className="w-4 h-4" /> New note
                 </button>
               </div>
             )}
           </div>
 
-          {/* Graph: drag-resize handle + panel */}
+          {/* Graph card */}
           {graphOpen && (
             <>
               <div
-                className="flex-shrink-0 w-4 relative flex items-center justify-center cursor-col-resize group z-10 border-l border-r border-stone-200 dark:border-zinc-800 bg-stone-50 dark:bg-zinc-900 hover:bg-stone-100 dark:hover:bg-zinc-800 transition-colors"
+                className="flex-shrink-0 w-3 flex items-center justify-center cursor-col-resize group z-10 rounded-xl hover:bg-stone-200/40 dark:hover:bg-zinc-700/30 transition-colors"
                 onMouseDown={e => {
                   e.preventDefault()
                   graphResizingRef.current = true
@@ -4180,9 +4214,9 @@ export default function NotesPage() {
                   document.body.style.userSelect = 'none'
                 }}
               >
-                <GripVertical className="w-3 h-3 text-stone-300 dark:text-zinc-700 group-hover:text-orange-600 transition-colors" />
+                <GripVertical className="w-3 h-3 text-stone-300 dark:text-zinc-700 group-hover:text-orange-500 transition-colors" />
               </div>
-              <div className="relative flex-shrink-0 h-full overflow-hidden"
+              <div className="relative flex-shrink-0 h-full overflow-hidden rounded-2xl shadow-sm"
                 style={{ width: graphWidth, transition: graphResizingRef.current ? 'none' : 'width 200ms ease' }}>
                 <div className="w-full h-full">
                   <GraphPanel
