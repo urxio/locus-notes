@@ -4,6 +4,7 @@ import { SEED_NOTES, PERSON_EMOJIS, NOTE_ICON_KEYS, NOTE_COLORS } from './consta
 export const STORAGE_KEY = 'locus-notes-v1'
 export const PEOPLE_STORAGE_KEY = 'locus-people-v1'
 export const OBJECT_TYPES_KEY = 'locus-object-types-v1'
+export const DELETED_TYPES_KEY = 'locus-deleted-types-v1'
 export const FOLDERS_STORAGE_KEY = 'locus-folders-v1'
 
 export function loadFolders(): Folder[] {
@@ -47,6 +48,20 @@ export function loadObjectTypes(): ObjectType[] {
 export function saveObjectTypes(types: ObjectType[]) {
     if (typeof window === 'undefined') return
     try { localStorage.setItem(OBJECT_TYPES_KEY, JSON.stringify(types)) } catch { }
+}
+
+export function loadDeletedObjectTypes(): string[] {
+    if (typeof window === 'undefined') return []
+    try {
+        const raw = localStorage.getItem(DELETED_TYPES_KEY)
+        if (raw) return JSON.parse(raw)
+    } catch { }
+    return []
+}
+
+export function saveDeletedObjectTypes(ids: string[]) {
+    if (typeof window === 'undefined') return
+    try { localStorage.setItem(DELETED_TYPES_KEY, JSON.stringify(ids)) } catch { }
 }
 
 export function loadPeople(): Person[] {

@@ -24,6 +24,8 @@ interface SidebarProps {
     people: Person[]
     onDeletePerson: (id: string) => void
     objectTypes: ObjectType[]
+    deletedObjectTypes: string[]
+    onPromptDeleteObjectType: (id: string) => void
     onCreateObjectType: (name: string, emoji: string) => void
     folders: Folder[]
     expandedFolders: Set<string>
@@ -35,8 +37,8 @@ interface SidebarProps {
     onDeleteNote: (noteId: string) => void
 }
 
-export function Sidebar({ notes, allNotes, activeId, search, onSearch, onSelect, onCreate, activeTag, onTagFilter, people, onDeletePerson, objectTypes, onCreateObjectType, folders, expandedFolders, onToggleFolder, onCreateFolder, onRenameFolder, onDeleteFolder, onMoveNote, onDeleteNote }: SidebarProps) {
-    const [ctxMenu, setCtxMenu] = useState<{ x: number; y: number; type: 'note' | 'person' | 'folder'; id: string } | null>(null)
+export function Sidebar({ notes, allNotes, activeId, search, onSearch, onSelect, onCreate, activeTag, onTagFilter, people, onDeletePerson, objectTypes, deletedObjectTypes, onPromptDeleteObjectType, onCreateObjectType, folders, expandedFolders, onToggleFolder, onCreateFolder, onRenameFolder, onDeleteFolder, onMoveNote, onDeleteNote }: SidebarProps) {
+    const [ctxMenu, setCtxMenu] = useState<{ x: number; y: number; type: 'note' | 'person' | 'folder' | 'objectType'; id: string } | null>(null)
     const [editingFolderId, setEditingFolderId] = useState<string | null>(null)
     const [editingName, setEditingName] = useState('')
 
@@ -52,6 +54,8 @@ export function Sidebar({ notes, allNotes, activeId, search, onSearch, onSelect,
         () => useTreeView ? buildTree(folders, allNotes) : [],
         [folders, allNotes, useTreeView]
     )
+    const allTypes = [...BUILTIN_OBJECT_TYPES, ...objectTypes].filter(t => !deletedObjectTypes.includes(t.id))
+    const visibleTypes = allTypes.filter(t => t.isBuiltin || people.some(p => (p.typeId ?? 'person') === t.id))
 
     function renderNoteItem(note: Note, depth: number) {
         return (
@@ -361,6 +365,10 @@ export function Sidebar({ notes, allNotes, activeId, search, onSearch, onSelect,
                         ) : ctxMenu.type === 'person' ? (
                             <button onClick={() => { onDeletePerson(ctxMenu.id); setCtxMenu(null) }} className="w-full text-left px-3 py-1.5 hover:bg-destructive/10 text-destructive flex items-center gap-2 transition-colors">
                                 <Trash2 className="w-3.5 h-3.5 flex-shrink-0" /> Delete object
+                            </button>
+                        ) : ctxMenu.type === 'objectType' ? (
+                            <button onClick={() => { onPromptDeleteObjectType(ctxMenu.id); setCtxMenu(null) }} className="w-full text-left px-3 py-1.5 hover:bg-destructive/10 text-destructive flex items-center gap-2 transition-colors">
+                                <Trash2 className="w-3.5 h-3.5 flex-shrink-0" /> Delete {allTypes.find(t => t.id === ctxMenu.id)?.name || 'type'}
                             </button>
                         ) : (
                             <button onClick={() => { onDeleteFolder(ctxMenu.id); setCtxMenu(null) }} className="w-full text-left px-3 py-1.5 hover:bg-destructive/10 text-destructive flex items-center gap-2 transition-colors">

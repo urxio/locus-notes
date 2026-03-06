@@ -22,12 +22,13 @@ interface NoteEditorProps {
     onCreatePerson: (name: string, typeId?: string) => Person
     onNavigateTo?: (noteId: string) => void
     objectTypes: ObjectType[]
+    deletedObjectTypes: string[]
     onCreateObjectType: (name: string, emoji: string) => ObjectType
     sidebarOpen?: boolean
     onToggleSidebar?: () => void
 }
 
-export function NoteEditor({ note, allTags, onChange, onDelete, people, onCreatePerson, onNavigateTo, objectTypes, onCreateObjectType, sidebarOpen, onToggleSidebar }: NoteEditorProps) {
+export function NoteEditor({ note, allTags, onChange, onDelete, people, onCreatePerson, onNavigateTo, objectTypes, deletedObjectTypes, onCreateObjectType, sidebarOpen, onToggleSidebar }: NoteEditorProps) {
     const { toast } = useToast()
 
     const [focusedBlockId, setFocusedBlockId] = useState<string | null>(null)
@@ -957,6 +958,7 @@ export function NoteEditor({ note, allTags, onChange, onDelete, people, onCreate
                                     onCreatePerson={onCreatePerson}
                                     onNavigateTo={onNavigateTo ?? (() => { })}
                                     objectTypes={objectTypes}
+                                    deletedObjectTypes={deletedObjectTypes}
                                     onCreateObjectType={onCreateObjectType}
                                     onFocusPrev={focusPrevBlock}
                                     onFocusNext={focusNextBlock}

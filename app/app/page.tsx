@@ -20,10 +20,13 @@ import {
 import { ThemeSwitcher } from "@/components/theme-switcher"
 import { useTheme } from "next-themes"
 import { useToast } from "@/components/ui/use-toast"
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+} from "@/components/ui/alert-dialog"
 
 import { BlockType, Block, Note, Folder, TreeItem, Person, ObjectType, GNode, GEdge } from "@/lib/types"
 import { NOTE_COLORS, NOTE_ICON_KEYS, BLOCK_PLACEHOLDERS, SLASH_MENU_ITEMS, BUILTIN_OBJECT_TYPES, PERSON_EMOJIS } from "@/lib/constants"
-import { loadFolders, saveFolders, loadObjectTypes, saveObjectTypes, loadPeople, savePeople, mkPerson, loadNotes, saveNotes, mkNote, mkBlock, cloneBlock, normalizeBlocks, buildTree } from "@/lib/storage"
+import { loadFolders, saveFolders, loadObjectTypes, saveObjectTypes, loadDeletedObjectTypes, saveDeletedObjectTypes, loadPeople, savePeople, mkPerson, loadNotes, saveNotes, mkNote, mkBlock, cloneBlock, normalizeBlocks, buildTree } from "@/lib/storage"
 import { buildGraph, tickSim } from "@/lib/graph"
 import { NoteIcon } from "@/components/note-icon"
 import { BLOCK_ICONS } from "@/components/block-icons"
@@ -66,6 +69,8 @@ export default function NotesPage() {
   const [mounted, setMounted] = useState(false)
   const [people, setPeople] = useState<Person[]>([])
   const [customObjectTypes, setCustomObjectTypes] = useState<ObjectType[]>([])
+  const [deletedObjectTypes, setDeletedObjectTypes] = useState<string[]>([])
+  const [deleteTypePrompt, setDeleteTypePrompt] = useState<string | null>(null)
   const [folders, setFolders] = useState<Folder[]>([])
   const [sidebarOpen, setSidebarOpen] = useState(true)
 
@@ -75,6 +80,7 @@ export default function NotesPage() {
     if (loaded.length > 0) setActiveId(loaded[0].id)
     setPeople(loadPeople())
     setCustomObjectTypes(loadObjectTypes())
+    setDeletedObjectTypes(loadDeletedObjectTypes())
     setFolders(loadFolders())
     setMounted(true)
   }, [])
@@ -116,6 +122,11 @@ export default function NotesPage() {
     if (mounted) saveObjectTypes(customObjectTypes)
   }, [customObjectTypes, mounted])
 
+  // Auto-save deleted object types
+  useEffect(() => {
+    if (mounted) saveDeletedObjectTypes(deletedObjectTypes)
+  }, [deletedObjectTypes, mounted])
+
   // Auto-save folders
   useEffect(() => {
     if (mounted) saveFolders(folders)
@@ -136,6 +147,25 @@ export default function NotesPage() {
     const newType: ObjectType = { id: crypto.randomUUID(), name, emoji }
     setCustomObjectTypes(prev => [...prev, newType])
     return newType
+  }
+
+  function deleteObjectType(typeId: string, deleteObjects: boolean) {
+    if (deleteObjects) {
+      const peopleToDelete = people.filter(p => (p.typeId ?? 'person') === typeId)
+      const noteIdsToDelete = peopleToDelete.map(p => p.noteId).filter(Boolean) as string[]
+      const updatedNotes = notes.filter(n => !noteIdsToDelete.includes(n.id))
+      setNotes(updatedNotes)
+      setPeople(prev => prev.filter(p => !peopleToDelete.includes(p)))
+      if (activeId && noteIdsToDelete.includes(activeId)) {
+        setActiveId(updatedNotes[0]?.id ?? null)
+      }
+    }
+
+    if (customObjectTypes.some(t => t.id === typeId)) {
+      setCustomObjectTypes(prev => prev.filter(t => t.id !== typeId))
+    } else {
+      setDeletedObjectTypes(prev => [...prev, typeId])
+    }
   }
 
   function createPerson(name: string, typeId: string = 'person'): Person {
@@ -287,6 +317,8 @@ export default function NotesPage() {
                 onSelectFolder={setSelectedFolderId}
                 people={people}
                 objectTypes={customObjectTypes}
+                deletedObjectTypes={deletedObjectTypes}
+                onPromptDeleteObjectType={setDeleteTypePrompt}
                 onDeletePerson={deletePerson}
                 onCreatePerson={createPerson}
                 onCreateFolder={createFolder}
@@ -338,6 +370,7 @@ export default function NotesPage() {
                 onCreatePerson={createPerson}
                 onNavigateTo={id => setActiveId(id)}
                 objectTypes={customObjectTypes}
+                deletedObjectTypes={deletedObjectTypes}
                 onCreateObjectType={createObjectType}
                 sidebarOpen={sidebarOpen}
                 onToggleSidebar={() => setSidebarOpen(true)}
@@ -397,6 +430,33 @@ export default function NotesPage() {
           )}
         </div>
       </div>
+
+      {/* Delete Object Type Dialog */}
+      <AlertDialog open={!!deleteTypePrompt} onOpenChange={(o: boolean) => { if (!o) setDeleteTypePrompt(null) }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Object Type</AlertDialogTitle>
+            <AlertDialogDescription>
+              What would you like to do with the existing objects of this type?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter className="flex-col sm:flex-row gap-2 mt-2">
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <Button variant="outline" onClick={() => {
+              if (deleteTypePrompt) deleteObjectType(deleteTypePrompt, false)
+              setDeleteTypePrompt(null)
+            }}>
+              Keep Objects
+            </Button>
+            <AlertDialogAction onClick={() => {
+              if (deleteTypePrompt) deleteObjectType(deleteTypePrompt, true)
+              setDeleteTypePrompt(null)
+            }} className="bg-red-600 hover:bg-red-700 focus:ring-red-600">
+              Delete Type & Objects
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </TooltipProvider>
   )
 }

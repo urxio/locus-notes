@@ -14,6 +14,8 @@ interface NavRailProps {
     onSelectFolder: (id: string | null) => void
     people: Person[]
     objectTypes: ObjectType[]
+    deletedObjectTypes: string[]
+    onPromptDeleteObjectType: (id: string) => void
     onDeletePerson: (id: string) => void
     onCreatePerson: (name: string, typeId?: string) => void
     onCreateFolder: (name?: string) => void
@@ -31,13 +33,13 @@ interface NavRailProps {
     onToggleSidebar?: () => void
 }
 
-export function NavRail({ folders, selectedFolderId, onSelectFolder, people, objectTypes, onDeletePerson, onCreatePerson, onCreateFolder, onDeleteFolder, onRenameFolder, onCreate, activeId, onSelect, allTags, activeTag, onTagFilter, graphOpen, onToggleGraph, notes, onToggleSidebar }: NavRailProps) {
+export function NavRail({ folders, selectedFolderId, onSelectFolder, people, objectTypes, deletedObjectTypes, onPromptDeleteObjectType, onDeletePerson, onCreatePerson, onCreateFolder, onDeleteFolder, onRenameFolder, onCreate, activeId, onSelect, allTags, activeTag, onTagFilter, graphOpen, onToggleGraph, notes, onToggleSidebar }: NavRailProps) {
     const [editingFolderId, setEditingFolderId] = useState<string | null>(null)
     const [editingName, setEditingName] = useState('')
     const [creatingType, setCreatingType] = useState<string | null>(null)
     const [creatingName, setCreatingName] = useState('')
-    const [ctxMenu, setCtxMenu] = useState<{ x: number; y: number; type: 'person' | 'folder'; id: string } | null>(null)
-    const allTypes = [...BUILTIN_OBJECT_TYPES, ...objectTypes]
+    const [ctxMenu, setCtxMenu] = useState<{ x: number; y: number; type: 'person' | 'folder' | 'objectType'; id: string } | null>(null)
+    const allTypes = [...BUILTIN_OBJECT_TYPES, ...objectTypes].filter(t => !deletedObjectTypes.includes(t.id))
     const visibleTypes = allTypes.filter(t => t.isBuiltin || people.some(p => (p.typeId ?? 'person') === t.id))
 
     return (
@@ -285,6 +287,11 @@ export function NavRail({ folders, selectedFolderId, onSelectFolder, people, obj
                         {ctxMenu.type === 'folder' && (
                             <button onClick={() => { onDeleteFolder(ctxMenu.id); setCtxMenu(null) }} className="w-full text-left px-3 py-1.5 text-[12px] hover:bg-stone-50 dark:hover:bg-zinc-800 flex items-center gap-2 text-red-500 transition-colors">
                                 <Trash2 className="w-3.5 h-3.5 flex-shrink-0" /> Delete folder
+                            </button>
+                        )}
+                        {ctxMenu.type === 'objectType' && (
+                            <button onClick={() => { onPromptDeleteObjectType(ctxMenu.id); setCtxMenu(null) }} className="w-full text-left px-3 py-1.5 text-[12px] hover:bg-stone-50 dark:hover:bg-zinc-800 flex items-center gap-2 text-red-500 transition-colors">
+                                <Trash2 className="w-3.5 h-3.5 flex-shrink-0" /> Delete {allTypes.find(t => t.id === ctxMenu.id)?.name || 'type'}
                             </button>
                         )}
                     </div>

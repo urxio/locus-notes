@@ -30,10 +30,11 @@ interface BlockItemProps {
     showDropIndicatorAbove: boolean
     onNavigateTo: (noteId: string) => void
     objectTypes: ObjectType[]
+    deletedObjectTypes: string[]
     onCreateObjectType: (name: string, emoji: string) => ObjectType
 }
 
-export function BlockItem({ block, index, listIndex, numBlocks, isFocused, isSelected, onUpdate, onInsert, onDelete, onMergePrev, onDuplicate, onFocus, onSelect, onDragSelectStart, onMouseEnterBlock, onPasteLines, people, onCreatePerson, onFocusPrev, onFocusNext, onReorderDragStart, isBeingDragged, showDropIndicatorAbove, onNavigateTo, objectTypes, onCreateObjectType }: BlockItemProps) {
+export function BlockItem({ block, index, listIndex, numBlocks, isFocused, isSelected, onUpdate, onInsert, onDelete, onMergePrev, onDuplicate, onFocus, onSelect, onDragSelectStart, onMouseEnterBlock, onPasteLines, people, onCreatePerson, onFocusPrev, onFocusNext, onReorderDragStart, isBeingDragged, showDropIndicatorAbove, onNavigateTo, objectTypes, deletedObjectTypes, onCreateObjectType }: BlockItemProps) {
     const ref = useRef<HTMLDivElement>(null)
     const containerRef = useRef<HTMLDivElement>(null)
     // Body contenteditable for toggle blocks (mounted only when block.open === true)
@@ -977,7 +978,7 @@ export function BlockItem({ block, index, listIndex, numBlocks, isFocused, isSel
 
             {/* @ Mention menu */}
             {showMentionMenu && (() => {
-                const allTypes = [...BUILTIN_OBJECT_TYPES, ...objectTypes]
+                const allTypes = [...BUILTIN_OBJECT_TYPES, ...objectTypes].filter(t => !deletedObjectTypes.includes(t.id))
                 const filteredObjects = people.filter(p =>
                     p.name.toLowerCase().includes(mentionFilter.toLowerCase())
                 )
