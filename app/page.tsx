@@ -1,6 +1,6 @@
 'use client'
 
-import { ArrowRight, BrainCircuit, Network, Zap, Github, ChevronRight } from 'lucide-react'
+import { ArrowRight, BrainCircuit, Network, Zap, Github, ChevronRight, FileText, Hash, User } from 'lucide-react'
 import Link from 'next/link'
 import { useEffect, useState } from 'react'
 import { cn } from '@/lib/utils'
@@ -76,36 +76,113 @@ export default function LandingPage() {
             </Link>
           </div>
 
-          {/* Abstract App Preview Graphic */}
-          <div className="mt-24 w-full max-w-5xl relative rounded-2xl overflow-hidden shadow-2xl shadow-orange-900/20 border border-zinc-800/50 bg-zinc-900/50 backdrop-blur-sm aspect-video flex items-center justify-center group">
-            <div className="absolute inset-0 bg-gradient-to-tr from-orange-500/5 via-transparent to-transparent pointer-events-none" />
+          {/* Detailed App Preview Mockup */}
+          <div className="mt-24 w-full max-w-5xl relative rounded-2xl overflow-hidden shadow-2xl shadow-orange-900/20 border border-zinc-800/80 bg-zinc-950 flex flex-col md:flex-row group">
+            {/* Editor Side */}
+            <div className="flex-1 p-6 md:p-10 border-b md:border-b-0 md:border-r border-zinc-800/80 relative overflow-hidden bg-zinc-950/50">
+              <div className="absolute top-0 left-0 w-[500px] h-[500px] bg-orange-500/5 blur-[120px] rounded-full pointer-events-none -translate-x-1/2 -translate-y-1/2" />
 
-            <div className="flex flex-col items-center gap-6 group-hover:scale-105 transition-transform duration-700 ease-out">
-              <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-orange-500 to-orange-700 flex items-center justify-center shadow-lg shadow-orange-500/20 relative">
-                <img src="/logo.png" alt="Locus Logo" className="w-full h-full rounded-2xl absolute inset-0 mix-blend-overlay opacity-50" />
-                <span className="text-white font-bold text-3xl tracking-tight z-10 relative">L</span>
-                <div className="absolute -inset-4 bg-orange-500/20 blur-xl -z-10 rounded-full" />
+              {/* Fake Mac Header */}
+              <div className="flex items-center gap-2 mb-8 opacity-50">
+                <div className="w-3 h-3 rounded-full bg-zinc-700" />
+                <div className="w-3 h-3 rounded-full bg-zinc-700" />
+                <div className="w-3 h-3 rounded-full bg-zinc-700" />
               </div>
-              <div className="space-y-3 flex flex-col items-center">
-                <div className="h-2 w-32 bg-zinc-800 rounded-full" />
-                <div className="h-2 w-48 bg-zinc-800 rounded-full" />
-                <div className="h-2 w-24 bg-zinc-800/50 rounded-full" />
+
+              {/* Fake Editor Content */}
+              <div className="space-y-6 transform group-hover:translate-x-1 transition-transform duration-500 ease-out relative z-10 w-full max-w-md">
+                <div className="h-8 w-[80%] bg-zinc-800/80 rounded-lg" />
+                <div className="flex gap-2">
+                  <div className="px-3 py-1 bg-orange-500/10 text-orange-400 rounded-full border border-orange-500/20 text-xs font-mono flex items-center gap-1.5"><Hash className="w-3 h-3" />research</div>
+                  <div className="px-3 py-1 bg-zinc-900 text-zinc-400 rounded-full border border-zinc-800 text-xs font-mono flex items-center gap-1.5"><Hash className="w-3 h-3" />knowledge-graph</div>
+                </div>
+
+                <div className="space-y-3 pt-2">
+                  <div className="h-3 w-full bg-zinc-800/60 rounded" />
+                  <div className="h-3 w-[95%] bg-zinc-800/60 rounded" />
+                  <div className="h-3 w-[85%] bg-zinc-800/60 rounded" />
+                  <div className="h-3 w-[60%] bg-zinc-800/60 rounded" />
+                </div>
+
+                <div className="py-4 border-l-2 border-orange-500/50 pl-4 space-y-3 my-4 bg-gradient-to-r from-orange-500/5 to-transparent">
+                  <div className="h-3 w-[90%] bg-zinc-700/80 rounded" />
+                  <div className="h-3 w-[75%] bg-zinc-700/80 rounded" />
+                </div>
+
+                <div className="space-y-3">
+                  <div className="flex items-center gap-3">
+                    <div className="w-6 h-6 rounded bg-zinc-800 flex items-center justify-center text-[10px]">📝</div>
+                    <div className="h-3 w-1/3 bg-zinc-800/80 rounded" />
+                  </div>
+                  <div className="h-3 w-[80%] bg-zinc-800/60 rounded ml-9" />
+                  <div className="h-3 w-[65%] bg-zinc-800/60 rounded ml-9" />
+                </div>
               </div>
             </div>
 
-            {/* Fake Nodes */}
-            <div className="absolute left-[15%] top-[20%] w-3 h-3 bg-zinc-700 rounded-full shadow-[0_0_15px_rgba(255,255,255,0.1)]" />
-            <div className="absolute right-[20%] top-[30%] w-4 h-4 bg-orange-500 rounded-full shadow-[0_0_20px_rgba(249,115,22,0.4)]" />
-            <div className="absolute left-[25%] bottom-[25%] w-2 h-2 bg-zinc-600 rounded-full" />
-            <div className="absolute right-[30%] bottom-[20%] w-3 h-3 bg-orange-600/50 rounded-full" />
+            {/* Graph Side */}
+            <div className="flex-1 relative overflow-hidden bg-[#0a0a0a] min-h-[400px] flex items-center justify-center">
+              <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,rgba(234,88,12,0.15)_0%,transparent_70%)] opacity-50 group-hover:opacity-100 transition-opacity duration-700" />
 
-            {/* Fake Edges */}
-            <svg className="absolute inset-0 w-full h-full pointer-events-none opacity-20" style={{ stroke: '#52525b', strokeWidth: 1 }}>
-              <line x1="15%" y1="20%" x2="50%" y2="50%" />
-              <line x1="50%" y1="50%" x2="80%" y2="30%" />
-              <line x1="50%" y1="50%" x2="25%" y2="75%" />
-              <line x1="50%" y1="50%" x2="70%" y2="80%" />
-            </svg>
+              {/* Background grid */}
+              <div className="absolute inset-0 bg-[url('/noise.png')] opacity-[0.02]" />
+              <div className="absolute inset-0" style={{ backgroundImage: 'radial-gradient(circle at 1px 1px, rgba(255,255,255,0.05) 1px, transparent 0)', backgroundSize: '32px 32px' }} />
+
+              <div className="relative w-full h-full max-w-sm max-h-[300px] origin-center group-hover:scale-105 transition-transform duration-1000 ease-out">
+                {/* SVG Edges */}
+                <svg className="absolute inset-0 w-full h-full pointer-events-none" style={{ stroke: 'currentColor', strokeWidth: 1.5 }}>
+                  <line x1="50%" y1="50%" x2="20%" y2="25%" className="text-zinc-800" />
+                  <line x1="50%" y1="50%" x2="80%" y2="30%" className="text-orange-900/60" />
+                  <line x1="50%" y1="50%" x2="75%" y2="75%" className="text-zinc-800" />
+                  <line x1="50%" y1="50%" x2="25%" y2="70%" className="text-orange-900/40" />
+
+                  <line x1="80%" y1="30%" x2="75%" y2="75%" className="text-zinc-800/50" />
+                  <line x1="20%" y1="25%" x2="25%" y2="70%" className="text-zinc-800/50" />
+
+                  <line x1="80%" y1="30%" x2="90%" y2="15%" className="text-zinc-800/30" />
+                  <line x1="25%" y1="70%" x2="15%" y2="85%" className="text-zinc-800/30" />
+                </svg>
+
+                {/* Nodes */}
+                {/* Center Node */}
+                <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-16 h-16 rounded-2xl bg-gradient-to-br from-orange-500 to-orange-600 flex items-center justify-center shadow-lg shadow-orange-500/20 z-20 group-hover:shadow-orange-500/40 transition-shadow duration-500">
+                  <Network className="w-8 h-8 text-white" />
+                  <div className="absolute -inset-2 rounded-full border border-orange-500/30 shrink-0 w-20 h-20 animate-[spin_10s_linear_infinite]" />
+                </div>
+
+                {/* Satellite 1 */}
+                <div className="absolute left-[20%] top-[25%] -translate-x-1/2 -translate-y-1/2 z-10">
+                  <div className="w-10 h-10 bg-zinc-900 border border-zinc-700/80 rounded-xl flex items-center justify-center shadow-lg group-hover:-translate-y-1 transition-transform duration-500 delay-100">
+                    <FileText className="w-4 h-4 text-zinc-400" />
+                  </div>
+                </div>
+
+                {/* Satellite 2 */}
+                <div className="absolute left-[80%] top-[30%] -translate-x-1/2 -translate-y-1/2 z-10">
+                  <div className="w-12 h-12 bg-zinc-900 border border-orange-500/30 rounded-full flex items-center justify-center shadow-[0_0_15px_rgba(234,88,12,0.15)] group-hover:scale-110 transition-transform duration-500 delay-200">
+                    <Hash className="w-5 h-5 text-orange-400" />
+                  </div>
+                </div>
+
+                {/* Satellite 3 */}
+                <div className="absolute left-[75%] top-[75%] -translate-x-1/2 -translate-y-1/2 z-10">
+                  <div className="w-8 h-8 bg-zinc-800 border border-zinc-700 rounded-full flex items-center justify-center shadow-lg group-hover:translate-x-1 transition-transform duration-500 delay-300">
+                    <User className="w-3.5 h-3.5 text-zinc-400" />
+                  </div>
+                </div>
+
+                {/* Satellite 4 */}
+                <div className="absolute left-[25%] top-[70%] -translate-x-1/2 -translate-y-1/2 z-10">
+                  <div className="px-3 py-1.5 bg-zinc-900 border border-zinc-800 rounded-lg flex items-center justify-center shadow-lg group-hover:-translate-x-1 transition-transform duration-500 cursor-default">
+                    <span className="text-[10px] font-mono text-zinc-400">Concept</span>
+                  </div>
+                </div>
+
+                {/* Tiny deco nodes */}
+                <div className="absolute left-[90%] top-[15%] w-2 h-2 bg-zinc-700 rounded-full" />
+                <div className="absolute left-[15%] top-[85%] w-2 h-2 bg-zinc-700 rounded-full" />
+              </div>
+            </div>
           </div>
         </section>
 
