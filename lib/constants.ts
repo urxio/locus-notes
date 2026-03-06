@@ -58,7 +58,6 @@ export const SEED_NOTES: Note[] = [
     {
         id: 'seed-1', title: 'Welcome to Locus', emoji: 'Sparkles', color: '#6366f1',
         blocks: [
-            { id: 'b1', type: 'h1', content: 'Welcome to Locus Notes' },
             { id: 'b2', type: 'p', content: 'A block editor with an Obsidian-style tag network. Tags connect notes and appear as edges in the graph view →' },
             { id: 'b3', type: 'bullet', content: 'Type  /  to insert blocks' },
             { id: 'b4', type: 'bullet', content: 'Use  #  shortcuts: # H1, ## H2, - bullets, > quote' },
@@ -66,6 +65,8 @@ export const SEED_NOTES: Note[] = [
             { id: 'b6', type: 'bullet', content: 'Add custom Object Types via the sidebar, and right-click to delete items' },
             { id: 'b7', type: 'bullet', content: 'Add tags at the bottom to connect notes in the graph' },
             { id: 'b8', type: 'bullet', content: 'Click any node in the graph to open that note' },
+            { id: 'b9', type: 'bullet', content: 'Paste images to embed them directly inline' },
+            { id: 'b10', type: 'bullet', content: 'Toggle the sidebar layout with the top-left panel icon' },
         ],
         tags: ['welcome', 'getting-started'],
         createdAt: Date.now() - 7200000, updatedAt: Date.now(),
