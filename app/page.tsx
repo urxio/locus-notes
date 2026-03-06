@@ -2194,10 +2194,10 @@ function NoteEditor({ note, allTags, onChange, onDelete, people, onCreatePerson,
   // Two stacks: past (undo) and future (redo).
   // For text edits we debounce 800 ms and capture the pre-typing snapshot so
   // rapid typing collapses into one history entry.
-  const pastRef   = useRef<Block[][]>([])
+  const pastRef = useRef<Block[][]>([])
   const futureRef = useRef<Block[][]>([])
   // Snapshot captured at the start of a typing burst (before any keys land)
-  const preTypingRef   = useRef<Block[] | null>(null)
+  const preTypingRef = useRef<Block[] | null>(null)
   const typingTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   // Immediate push – used for structural changes (add/delete/type/reorder)
@@ -2205,9 +2205,9 @@ function NoteEditor({ note, allTags, onChange, onDelete, people, onCreatePerson,
     if (typingTimerRef.current) {
       clearTimeout(typingTimerRef.current)
       typingTimerRef.current = null
-      preTypingRef.current   = null
+      preTypingRef.current = null
     }
-    pastRef.current   = [...pastRef.current, snapshot]
+    pastRef.current = [...pastRef.current, snapshot]
     futureRef.current = []
   }
 
@@ -2221,7 +2221,7 @@ function NoteEditor({ note, allTags, onChange, onDelete, people, onCreatePerson,
     }
     typingTimerRef.current = setTimeout(() => {
       if (preTypingRef.current) {
-        pastRef.current   = [...pastRef.current, preTypingRef.current]
+        pastRef.current = [...pastRef.current, preTypingRef.current]
         futureRef.current = []
         preTypingRef.current = null
       }
@@ -2238,16 +2238,16 @@ function NoteEditor({ note, allTags, onChange, onDelete, people, onCreatePerson,
     if (typingTimerRef.current && preTypingRef.current) {
       clearTimeout(typingTimerRef.current)
       typingTimerRef.current = null
-      const previous       = preTypingRef.current
+      const previous = preTypingRef.current
       preTypingRef.current = null
-      futureRef.current    = [note.blocks, ...futureRef.current]
+      futureRef.current = [note.blocks, ...futureRef.current]
       onChange(note.id, { blocks: previous })
       return
     }
     if (pastRef.current.length === 0) return
-    const previous     = pastRef.current[pastRef.current.length - 1]
-    pastRef.current    = pastRef.current.slice(0, -1)
-    futureRef.current  = [note.blocks, ...futureRef.current]
+    const previous = pastRef.current[pastRef.current.length - 1]
+    pastRef.current = pastRef.current.slice(0, -1)
+    futureRef.current = [note.blocks, ...futureRef.current]
     onChange(note.id, { blocks: previous })
   }
 
@@ -2256,8 +2256,8 @@ function NoteEditor({ note, allTags, onChange, onDelete, people, onCreatePerson,
     if (document.activeElement instanceof HTMLElement) {
       document.activeElement.blur()
     }
-    const next        = futureRef.current[0]
-    pastRef.current   = [...pastRef.current, note.blocks]
+    const next = futureRef.current[0]
+    pastRef.current = [...pastRef.current, note.blocks]
     futureRef.current = futureRef.current.slice(1)
     onChange(note.id, { blocks: next })
   }
@@ -3089,7 +3089,7 @@ function NoteEditor({ note, allTags, onChange, onDelete, people, onCreatePerson,
                   onPasteLines={insertPastedLines}
                   people={people}
                   onCreatePerson={onCreatePerson}
-                  onNavigateTo={onNavigateTo ?? (() => {})}
+                  onNavigateTo={onNavigateTo ?? (() => { })}
                   objectTypes={objectTypes}
                   onCreateObjectType={onCreateObjectType}
                   onFocusPrev={focusPrevBlock}
@@ -3250,7 +3250,7 @@ function NavRail({ folders, selectedFolderId, onSelectFolder, people, objectType
           {/* Folders */}
           <div className="pt-3">
             <div className="flex items-center justify-between px-1 mb-1.5">
-              <span className="font-mono text-[9px] uppercase tracking-[0.18em] text-stone-300 dark:text-zinc-700">Pages</span>
+              <span className="font-mono text-[9px] uppercase tracking-[0.18em] text-stone-300 dark:text-zinc-700">Folders</span>
               <button onClick={() => onCreateFolder()} title="New folder"
                 className="text-stone-300 hover:text-orange-500 dark:text-zinc-700 dark:hover:text-orange-500 transition-colors">
                 <FolderPlus className="w-3 h-3" />
@@ -3330,9 +3330,9 @@ function NavRail({ folders, selectedFolderId, onSelectFolder, people, objectType
                   const typeObjects = people.filter(p => (p.typeId ?? 'person') === objType.id)
                   return (
                     <div key={objType.id}>
-                      <div className="flex items-center gap-1.5 px-1 mb-0.5">
-                        <span className="text-[10px]">{objType.emoji}</span>
-                        <span className="font-mono text-[9px] uppercase tracking-[0.12em] text-stone-300 dark:text-zinc-700">{objType.name}</span>
+                      <div className="flex items-center gap-1.5 px-1.5 py-1 mb-1 mt-1 bg-stone-100/80 dark:bg-zinc-800/50 rounded-md">
+                        <span className="text-[11px]">{objType.emoji}</span>
+                        <span className="font-mono font-medium text-[10px] uppercase tracking-[0.1em] text-stone-700 dark:text-zinc-300">{objType.name}</span>
                       </div>
                       <div className="space-y-0.5">
                         {typeObjects.map(person => (
@@ -3375,25 +3375,19 @@ function NavRail({ folders, selectedFolderId, onSelectFolder, people, objectType
                   <button onClick={() => onTagFilter(null)} className="font-mono text-[9px] text-orange-500 hover:underline">clear</button>
                 )}
               </div>
-              <div className="space-y-0.5">
+              <div className="flex flex-wrap gap-1.5 px-1 pb-2">
                 {allTags.map(tag => (
                   <button key={tag}
                     onClick={() => { onTagFilter(activeTag === tag ? null : tag); onSelectFolder(null) }}
                     className={cn(
-                      "w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-[13px] transition-all text-left",
+                      "flex items-center gap-1 px-2 py-1 rounded-md text-[11px] transition-all",
                       activeTag === tag
-                        ? "bg-white dark:bg-zinc-800 text-stone-900 dark:text-zinc-100 font-medium shadow-sm"
-                        : "text-stone-500 dark:text-zinc-400 hover:bg-white/70 dark:hover:bg-zinc-800/50"
+                        ? "bg-orange-100 dark:bg-orange-950/50 text-orange-700 dark:text-orange-300 font-medium ring-1 ring-orange-200 dark:ring-orange-900/50 shadow-sm"
+                        : "bg-white dark:bg-zinc-800/50 text-stone-500 dark:text-zinc-400 hover:bg-stone-100 dark:hover:bg-zinc-700/50 border border-stone-200/50 dark:border-zinc-800"
                     )}
                   >
-                    <div className={cn("w-6 h-6 rounded-lg flex items-center justify-center flex-shrink-0 transition-colors",
-                      activeTag === tag ? "bg-orange-100 dark:bg-orange-950/50" : "bg-stone-100 dark:bg-zinc-700/60"
-                    )}>
-                      <Hash className={cn("w-3 h-3 transition-colors",
-                        activeTag === tag ? "text-orange-600 dark:text-orange-400" : "text-stone-400 dark:text-zinc-500"
-                      )} />
-                    </div>
-                    <span className="font-mono text-[12px] truncate">{tag}</span>
+                    <Hash className={cn("w-3 h-3 opacity-70", activeTag === tag ? "text-orange-600 dark:text-orange-400" : "")} />
+                    <span className="font-mono text-[11px] truncate max-w-[120px]">{tag}</span>
                   </button>
                 ))}
               </div>
