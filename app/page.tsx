@@ -14,7 +14,7 @@ import {
   Code2, Quote, CheckSquare, Minus, PanelLeftClose, PanelLeftOpen,
   ChevronRight, BookOpen, Calendar, GripVertical,
   User, Bold, Italic, Strikethrough, Palette, Underline,
-  Maximize2, Minimize2, FolderPlus, Pencil
+  Maximize2, Minimize2, FolderPlus, Pencil, Folder as FolderIcon
 } from "lucide-react"
 import { ThemeSwitcher } from "@/components/theme-switcher"
 import { useTheme } from "next-themes"
@@ -3249,8 +3249,11 @@ function NavRail({ folders, selectedFolderId, onSelectFolder, people, objectType
 
           {/* Folders */}
           <div className="pt-3">
-            <div className="flex items-center justify-between px-1 mb-1.5">
-              <span className="font-mono text-[9px] uppercase tracking-[0.18em] text-stone-300 dark:text-zinc-700">Folders</span>
+            <div className="flex items-center justify-between px-1 mb-2 mt-1">
+              <div className="flex items-center gap-1.5">
+                <div className="w-1.5 h-1.5 rounded-full bg-blue-500 shadow-[0_0_8px_rgba(59,130,246,0.8)]" />
+                <span className="font-mono font-bold text-[10px] uppercase tracking-[0.18em] text-stone-400 dark:text-zinc-500">Folders</span>
+              </div>
               <button onClick={() => onCreateFolder()} title="New folder"
                 className="text-stone-300 hover:text-orange-500 dark:text-zinc-700 dark:hover:text-orange-500 transition-colors">
                 <FolderPlus className="w-3 h-3" />
@@ -3275,7 +3278,7 @@ function NavRail({ folders, selectedFolderId, onSelectFolder, people, objectType
                       <div className={cn("w-6 h-6 rounded-lg flex items-center justify-center flex-shrink-0 transition-colors",
                         isSelected ? "bg-orange-100 dark:bg-orange-950/50" : "bg-stone-100 dark:bg-zinc-700/60"
                       )}>
-                        <span className="text-[10px]">📁</span>
+                        <FolderIcon className="w-3.5 h-3.5 text-blue-400 dark:text-blue-500 opacity-80" />
                       </div>
                       {isEditing ? (
                         <input autoFocus value={editingName}
@@ -3322,8 +3325,9 @@ function NavRail({ folders, selectedFolderId, onSelectFolder, people, objectType
           {/* Objects */}
           {visibleTypes.length > 0 && (
             <div className="pt-3">
-              <div className="px-1 mb-1.5">
-                <span className="font-mono text-[9px] uppercase tracking-[0.18em] text-stone-300 dark:text-zinc-700">Objects</span>
+              <div className="px-1 mb-2 mt-1 flex items-center gap-1.5">
+                <div className="w-1.5 h-1.5 rounded-full bg-pink-500 shadow-[0_0_8px_rgba(236,72,153,0.8)]" />
+                <span className="font-mono font-bold text-[10px] uppercase tracking-[0.18em] text-stone-400 dark:text-zinc-500">Objects</span>
               </div>
               <div className="space-y-2">
                 {visibleTypes.map(objType => {
@@ -3331,7 +3335,10 @@ function NavRail({ folders, selectedFolderId, onSelectFolder, people, objectType
                   return (
                     <div key={objType.id}>
                       <div className="flex items-center gap-1.5 px-1.5 py-1 mb-1 mt-1 bg-stone-100/80 dark:bg-zinc-800/50 rounded-md">
-                        <span className="text-[11px]">{objType.emoji}</span>
+                        {objType.emoji === '👤' ? <User className="w-3.5 h-3.5 text-stone-500" /> :
+                          objType.emoji === '📁' ? <FolderIcon className="w-3.5 h-3.5 text-stone-500" /> :
+                            objType.emoji === '✅' ? <CheckSquare className="w-3.5 h-3.5 text-stone-500" /> :
+                              <span className="text-[11px]">{objType.emoji}</span>}
                         <span className="font-mono font-medium text-[10px] uppercase tracking-[0.1em] text-stone-700 dark:text-zinc-300">{objType.name}</span>
                       </div>
                       <div className="space-y-0.5">
@@ -3346,7 +3353,10 @@ function NavRail({ folders, selectedFolderId, onSelectFolder, people, objectType
                                   : "text-stone-500 dark:text-zinc-400 hover:bg-white/70 dark:hover:bg-zinc-800/50"
                               )}
                             >
-                              <span className="text-[11px] flex-shrink-0">{person.emoji}</span>
+                              {person.emoji === '👤' ? <User className="w-3 h-3 flex-shrink-0 opacity-70" /> :
+                                person.emoji === '📁' ? <FolderIcon className="w-3 h-3 flex-shrink-0 opacity-70" /> :
+                                  person.emoji === '✅' ? <CheckSquare className="w-3 h-3 flex-shrink-0 opacity-70" /> :
+                                    <span className="text-[11px] flex-shrink-0">{person.emoji}</span>}
                               <span className="truncate">{person.name}</span>
                             </button>
                             <button onClick={() => onDeletePerson(person.id)}
