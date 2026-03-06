@@ -3222,9 +3222,7 @@ function NavRail({ folders, selectedFolderId, onSelectFolder, people, objectType
       <div className="px-5 pt-5 pb-4">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-orange-500 to-orange-700 flex items-center justify-center flex-shrink-0 shadow-sm">
-              <span className="text-white font-bold text-[13px] tracking-tight">L</span>
-            </div>
+            <img src="/logo.png" alt="Locus Logo" className="w-8 h-8 rounded-[10px] shadow-sm flex-shrink-0 opacity-[0.95]" />
             <div>
               <p className="font-semibold text-[13px] text-stone-800 dark:text-zinc-100 leading-none">Locus</p>
               <p className="text-[10px] text-stone-400 dark:text-zinc-600 mt-0.5">Notes</p>
