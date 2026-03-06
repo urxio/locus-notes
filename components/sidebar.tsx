@@ -239,7 +239,10 @@ export function Sidebar({ notes, allNotes, activeId, search, onSearch, onSelect,
                                 const typeObjects = people.filter(p => (p.typeId ?? 'person') === objType.id)
                                 return (
                                     <div key={objType.id}>
-                                        <div className="flex items-center gap-1.5 mb-1">
+                                        <div
+                                            className="flex items-center gap-1.5 mb-1 cursor-context-menu"
+                                            onContextMenu={e => { e.preventDefault(); e.stopPropagation(); setCtxMenu({ x: e.clientX, y: e.clientY, type: 'objectType', id: objType.id }) }}
+                                        >
                                             <NoteIcon iconName={objType.emoji} className="text-[11px] leading-none text-muted-foreground" />
                                             <span className="text-[10px] font-semibold text-foreground/60 uppercase tracking-wider flex-1">{objType.name}</span>
                                             {typeObjects.length > 0 && (

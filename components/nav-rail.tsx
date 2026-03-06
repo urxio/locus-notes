@@ -180,7 +180,10 @@ export function NavRail({ folders, selectedFolderId, onSelectFolder, people, obj
                                     const typeObjects = people.filter(p => (p.typeId ?? 'person') === objType.id)
                                     return (
                                         <div key={objType.id}>
-                                            <div className="flex items-center gap-1.5 px-1.5 py-1 mb-1 mt-1 bg-stone-100/80 dark:bg-zinc-800/50 rounded-md">
+                                            <div
+                                                className="flex items-center gap-1.5 px-1.5 py-1 mb-1 mt-1 bg-stone-100/80 dark:bg-zinc-800/50 rounded-md cursor-context-menu"
+                                                onContextMenu={e => { e.preventDefault(); e.stopPropagation(); setCtxMenu({ x: e.clientX, y: e.clientY, type: 'objectType', id: objType.id }) }}
+                                            >
                                                 <NoteIcon iconName={objType.emoji} className="w-3.5 h-3.5 text-stone-500" />
                                                 <span className="font-mono font-medium text-[10px] uppercase tracking-[0.1em] text-stone-700 dark:text-zinc-300">{objType.name}</span>
                                             </div>
