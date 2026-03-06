@@ -9,22 +9,6 @@ const inter = Inter({ subsets: ["latin"] })
 export const metadata = {
   title: "Locus Notes",
   description: "A block editor with an Obsidian-style tag network graph",
-  manifest: "/manifest.json",
-  appleWebApp: {
-    capable: true,
-    statusBarStyle: "default",
-    title: "Locus",
-  },
-  formatDetection: {
-    telephone: false,
-  },
-}
-
-export const viewport = {
-  themeColor: "#09090b",
-  width: "device-width",
-  initialScale: 1,
-  maximumScale: 1,
 }
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

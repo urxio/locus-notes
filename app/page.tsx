@@ -8,46 +8,11 @@ import { cn } from '@/lib/utils'
 export default function LandingPage() {
   const [scrolled, setScrolled] = useState(false)
 
-  // PWA Install State
-  const [installPrompt, setInstallPrompt] = useState<any>(null)
-  const [isInstallable, setIsInstallable] = useState(false)
-
   useEffect(() => {
     const handleScroll = () => setScrolled(window.scrollY > 20)
     window.addEventListener('scroll', handleScroll)
     return () => window.removeEventListener('scroll', handleScroll)
   }, [])
-
-  useEffect(() => {
-    const handleBeforeInstallPrompt = (e: any) => {
-      // Prevent the mini-infobar from appearing on mobile
-      e.preventDefault();
-      // Stash the event so it can be triggered later.
-      setInstallPrompt(e);
-      // Update UI notify the user they can install the PWA
-      setIsInstallable(true);
-    };
-
-    window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
-
-    return () => window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
-  }, []);
-
-  const handleInstallClick = async () => {
-    if (!installPrompt) {
-      alert("To install Locus Notes, click your browser's 'Share' or 'Menu' button and select 'Add to Home Screen' or 'Install App'.")
-      return;
-    }
-    // Show the install prompt
-    installPrompt.prompt();
-    // Wait for the user to respond to the prompt
-    const { outcome } = await installPrompt.userChoice;
-    // We no longer need the prompt. Clear it up.
-    if (outcome === 'accepted') {
-      setInstallPrompt(null);
-      setIsInstallable(false);
-    }
-  };
 
   return (
     <div className="min-h-screen bg-zinc-950 text-zinc-100 selection:bg-orange-500/30 font-sans overflow-x-hidden">
@@ -71,18 +36,12 @@ export default function LandingPage() {
             <img src="/logo.png" alt="Locus Logo" className="w-8 h-8 rounded-lg shadow-sm" />
             <span className="font-semibold text-lg tracking-tight">Locus Notes</span>
           </div>
-          <div className="flex items-center gap-4 sm:gap-6">
+          <div className="flex items-center gap-6">
             <a href="https://github.com/urxio/locus-notes" target="_blank" rel="noreferrer" className="text-zinc-400 hover:text-zinc-100 transition-colors hidden sm:flex items-center gap-2 text-sm font-medium">
               <Github className="w-4 h-4" />
               <span>GitHub</span>
             </a>
-            <button
-              onClick={handleInstallClick}
-              className="text-zinc-300 hover:text-white transition-colors text-sm font-medium hidden sm:block"
-            >
-              Install App
-            </button>
-            <Link href="/app" className="bg-orange-600 hover:bg-orange-500 text-white px-5 py-2 rounded-full text-sm font-medium transition-all shadow-lg shadow-orange-600/20 flex items-center gap-2 group border border-orange-500/50 shrink-0">
+            <Link href="/app" className="bg-orange-600 hover:bg-orange-500 text-white px-5 py-2 rounded-full text-sm font-medium transition-all shadow-lg shadow-orange-600/20 flex items-center gap-2 group border border-orange-500/50">
               <span>Open App</span>
               <ArrowRight className="w-4 h-4 group-hover:translate-x-0.5 transition-transform" />
             </Link>
