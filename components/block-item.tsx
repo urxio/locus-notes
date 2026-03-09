@@ -6,7 +6,7 @@ import { SLASH_MENU_ITEMS, BUILTIN_OBJECT_TYPES, BLOCK_PLACEHOLDERS } from "@/li
 import { BLOCK_ICONS } from "./block-icons"
 import { NoteIcon } from "./note-icon"
 import { DateBlock } from "./date-block"
-import { injectMentionsIntoHtml } from "@/lib/mentions"
+import { injectMentionsIntoHtml, linkifyUrls } from "@/lib/mentions"
 
 interface BlockItemProps {
     block: Block; index: number; listIndex: number; numBlocks: number; isFocused: boolean
@@ -743,6 +743,12 @@ export function BlockItem({ block, index, listIndex, numBlocks, isFocused, isSel
                     style={{ wordBreak: 'break-word', whiteSpace: 'pre-wrap' }}
                     onClick={(e) => {
                         const target = e.target as HTMLElement
+                        // Handle hyperlink clicks — let the browser follow <a target="_blank"> natively
+                        const anchor = target.closest('a[href]') as HTMLAnchorElement | null
+                        if (anchor) {
+                            e.stopPropagation()
+                            return
+                        }
                         if (target.matches('[data-mention]')) {
                             e.stopPropagation()
                             const name = target.getAttribute('data-mention')
@@ -752,7 +758,7 @@ export function BlockItem({ block, index, listIndex, numBlocks, isFocused, isSel
                         }
                         onFocus(block.id)
                     }}
-                    dangerouslySetInnerHTML={{ __html: block.content ? injectMentionsIntoHtml(block.content, people) : '' }}
+                    dangerouslySetInnerHTML={{ __html: block.content ? linkifyUrls(injectMentionsIntoHtml(block.content, people)) : '' }}
                 />
             )}
         </div>
