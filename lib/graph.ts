@@ -49,20 +49,27 @@ export function buildGraph(notes: Note[], people: Person[], w: number, h: number
     notes.forEach(note => note.tags.forEach(tag =>
         edges.push({ source: `note:${note.id}`, target: `tag:${tag}` })
     ))
-    // Mention edges: connect notes that @mention a person to that person's note
-    const personNoteMap = new Map(
-        people.filter(p => p.noteId).map(p => [p.name.toLowerCase(), p.noteId!])
-    )
+    // Mention edges: connect notes that @mention a person to that person's note.
+    // We check the raw HTML (data-mention attribute) AND the stripped plain text
+    // so that multi-word names like "finish taxes" are matched correctly.
+    // The old /@(\S+)/g regex stopped at the first space, so "@finish taxes"
+    // would only capture "@finish" and miss the full name.
+    const linkedPeople = people.filter(p => p.noteId)
     notes.forEach(note => {
         note.blocks.forEach(block => {
-            const matches = stripHtml(block.content + ' ' + (block.expandedContent ?? '')).match(/@(\S+)/g)
-            if (!matches) return
-            matches.forEach(m => {
-                const name = m.slice(1).toLowerCase()
-                const personNoteId = personNoteMap.get(name)
-                if (personNoteId && personNoteId !== note.id &&
-                    !edges.some(e => e.source === `note:${note.id}` && e.target === `note:${personNoteId}`)) {
-                    edges.push({ source: `note:${note.id}`, target: `note:${personNoteId}` })
+            const raw = (block.content + ' ' + (block.expandedContent ?? '')).toLowerCase()
+            const plain = stripHtml(raw)
+            linkedPeople.forEach(person => {
+                if (person.noteId === note.id) return
+                const name = person.name.toLowerCase()
+                // Match either the HTML attribute form or the plain-text @name form
+                const found =
+                    raw.includes(`data-mention="${name}"`) ||   // injected HTML span
+                    plain.includes(`@${name}`)                  // plain text / stripped HTML
+                if (found) {
+                    const src = `note:${note.id}`, tgt = `note:${person.noteId}`
+                    if (!edges.some(e => e.source === src && e.target === tgt))
+                        edges.push({ source: src, target: tgt })
                 }
             })
         })
