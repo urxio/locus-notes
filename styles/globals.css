@@ -94,24 +94,39 @@
 /* ── Note-mention chip (page links via @[[PageTitle]]) ─────────────────────── */
 .note-mention-chip {
   display: inline;
-  padding: 1px 6px 2px;
-  border-radius: 4px;
-  font-size: 0.85em;
-  font-weight: 500;
+  padding: 2px 8px 2px 6px;
+  border-radius: 5px;
+  font-size: 0.84em;
+  font-weight: 600;
   cursor: pointer;
   user-select: none;
   vertical-align: baseline;
   line-height: inherit;
-  transition: opacity 0.15s;
-  background: rgba(139, 92, 246, 0.12);
-  color: rgb(109, 40, 217);
-  border: 1px solid rgba(139, 92, 246, 0.28);
+  transition: background 0.15s, border-color 0.15s, box-shadow 0.15s;
+  background: rgba(124, 58, 237, 0.13);
+  color: rgb(91, 33, 182);
+  border: 1.5px solid rgba(124, 58, 237, 0.45);
+  box-shadow: 0 1px 3px rgba(124, 58, 237, 0.10);
+}
+.note-mention-chip::before {
+  content: '📄';
+  font-size: 0.82em;
+  margin-right: 4px;
+  vertical-align: baseline;
 }
 .dark .note-mention-chip {
-  background: rgba(139, 92, 246, 0.2);
-  color: rgb(196, 167, 255);
-  border-color: rgba(139, 92, 246, 0.4);
+  background: rgba(139, 92, 246, 0.22);
+  color: rgb(216, 180, 254);
+  border-color: rgba(139, 92, 246, 0.55);
+  box-shadow: 0 1px 3px rgba(139, 92, 246, 0.18);
 }
 .note-mention-chip:hover {
-  opacity: 0.72;
+  background: rgba(124, 58, 237, 0.22);
+  border-color: rgba(124, 58, 237, 0.65);
+  box-shadow: 0 2px 6px rgba(124, 58, 237, 0.18);
+}
+.dark .note-mention-chip:hover {
+  background: rgba(139, 92, 246, 0.32);
+  border-color: rgba(139, 92, 246, 0.7);
+  box-shadow: 0 2px 6px rgba(139, 92, 246, 0.28);
 }

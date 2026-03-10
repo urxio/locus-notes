@@ -53,6 +53,8 @@ export function BlockItem({ block, index, listIndex, numBlocks, isFocused, isSel
     const mentionAnchorRef = useRef<number>(-1)
     const activeEditorRef = useRef<'main' | 'body'>('main')
     const slashAnchorRef = useRef<number>(-1)
+    // Tracks the previous isFocused value so we can detect focus-gain transitions
+    const prevIsFocusedRef = useRef(false)
     // Inline date picker: set when user clicks a [data-type="date"] chip
     const [activeDateAnchor, setActiveDateAnchor] = useState<{ rect: DOMRect; dateId: string; date: string } | null>(null)
 
@@ -61,14 +63,19 @@ export function BlockItem({ block, index, listIndex, numBlocks, isFocused, isSel
     const [newTypeName, setNewTypeName] = useState('')
     const [newTypeEmoji, setNewTypeEmoji] = useState('MapPin')
 
-    // Set content imperatively on mount / type change / undo-redo content restore
+    // Set content imperatively on mount / type change / undo-redo content restore.
+    // Also re-syncs when the block *gains* focus so that inline chips (e.g. note-mention
+    // spans with contenteditable="false") are correctly rendered in edit mode instead of
+    // showing as raw HTML after returning to a block via keyboard navigation.
     useEffect(() => {
         const el = ref.current
         if (!el) return
-        if (document.activeElement !== el) {
+        const justGainedFocus = isFocused && !prevIsFocusedRef.current
+        prevIsFocusedRef.current = isFocused
+        if (document.activeElement !== el || justGainedFocus) {
             el.innerHTML = block.content
         }
-    }, [block.type, block.content])
+    }, [block.type, block.content, isFocused])
 
     // Focus imperatively (cursor at start).
     // Depends on both isFocused AND block.type: when a slash-command changes the
@@ -84,8 +91,16 @@ export function BlockItem({ block, index, listIndex, numBlocks, isFocused, isSel
         try {
             const range = document.createRange()
             const sel = window.getSelection()
-            if (ref.current.firstChild) {
-                range.setStart(ref.current.firstChild, 0)
+            const firstChild = ref.current.firstChild
+            if (firstChild) {
+                if (firstChild.nodeType === Node.TEXT_NODE) {
+                    // Normal text node — place caret at offset 0
+                    range.setStart(firstChild, 0)
+                } else {
+                    // Non-text firstChild (e.g. a contenteditable="false" chip span):
+                    // place caret *before* it, not inside it, to avoid browser quirks
+                    range.setStartBefore(firstChild)
+                }
             } else {
                 range.setStart(ref.current, 0)
             }
