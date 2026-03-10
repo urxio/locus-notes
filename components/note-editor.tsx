@@ -27,9 +27,10 @@ interface NoteEditorProps {
     onCreateObjectType: (name: string, emoji: string) => ObjectType
     sidebarOpen?: boolean
     onToggleSidebar?: () => void
+    notes?: Note[]
 }
 
-export function NoteEditor({ note, allTags, onChange, onDelete, people, onCreatePerson, onNavigateTo, objectTypes, deletedObjectTypes, onCreateObjectType, sidebarOpen, onToggleSidebar }: NoteEditorProps) {
+export function NoteEditor({ note, allTags, onChange, onDelete, people, onCreatePerson, onNavigateTo, objectTypes, deletedObjectTypes, onCreateObjectType, sidebarOpen, onToggleSidebar, notes = [] }: NoteEditorProps) {
     const { toast } = useToast()
 
     const [focusedBlockId, setFocusedBlockId] = useState<string | null>(null)
@@ -1032,6 +1033,7 @@ export function NoteEditor({ note, allTags, onChange, onDelete, people, onCreate
                                     onReorderDragStart={startReorderDrag}
                                     isBeingDragged={reorderDragId === block.id}
                                     showDropIndicatorAbove={reorderDropIdx === index}
+                                    notes={notes.filter(n => n.id !== note.id)}
                                 />
                             )
                         })}

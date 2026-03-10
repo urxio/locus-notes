@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect, useCallback } from "react"
-import { GripVertical, Trash2, ChevronRight, User, Plus } from "lucide-react"
+import { GripVertical, Trash2, ChevronRight, User, Plus, FileText } from "lucide-react"
 import { cn } from "@/lib/utils"
-import { Block, BlockType, Person, ObjectType } from "@/lib/types"
+import { Block, BlockType, Person, ObjectType, Note } from "@/lib/types"
 import { SLASH_MENU_ITEMS, BUILTIN_OBJECT_TYPES, BLOCK_PLACEHOLDERS } from "@/lib/constants"
 import { BLOCK_ICONS } from "./block-icons"
 import { NoteIcon } from "./note-icon"
@@ -34,9 +34,10 @@ interface BlockItemProps {
     objectTypes: ObjectType[]
     deletedObjectTypes: string[]
     onCreateObjectType: (name: string, emoji: string) => ObjectType
+    notes?: Note[]
 }
 
-export function BlockItem({ block, index, listIndex, numBlocks, isFocused, isSelected, onUpdate, onInsert, onDelete, onMergePrev, onDuplicate, onFocus, onSelect, onDragSelectStart, onMouseEnterBlock, onPasteLines, people, onCreatePerson, onFocusPrev, onFocusNext, onReorderDragStart, isBeingDragged, showDropIndicatorAbove, onNavigateTo, objectTypes, deletedObjectTypes, onCreateObjectType }: BlockItemProps) {
+export function BlockItem({ block, index, listIndex, numBlocks, isFocused, isSelected, onUpdate, onInsert, onDelete, onMergePrev, onDuplicate, onFocus, onSelect, onDragSelectStart, onMouseEnterBlock, onPasteLines, people, onCreatePerson, onFocusPrev, onFocusNext, onReorderDragStart, isBeingDragged, showDropIndicatorAbove, onNavigateTo, objectTypes, deletedObjectTypes, onCreateObjectType, notes = [] }: BlockItemProps) {
     const ref = useRef<HTMLDivElement>(null)
     const containerRef = useRef<HTMLDivElement>(null)
     // Body contenteditable for toggle blocks (mounted only when block.open === true)
@@ -260,19 +261,32 @@ export function BlockItem({ block, index, listIndex, numBlocks, isFocused, isSel
         }
 
         if (showMentionMenu) {
-            const filteredPeople = people.filter(p =>
-                p.name.toLowerCase().includes(mentionFilter.toLowerCase())
-            )
-            const totalItems = filteredPeople.length + (mentionFilter.trim().length > 0 && !filteredPeople.some(p => p.name.toLowerCase() === mentionFilter.toLowerCase()) ? 1 : 0)
-            if (e.key === 'ArrowDown') { e.preventDefault(); setMentionIdx(i => Math.min(i + 1, totalItems - 1)); return }
+            const lf = mentionFilter.toLowerCase()
+            const filteredNotes = notes.filter(n => n.title.toLowerCase().includes(lf))
+            const filteredPeople = people.filter(p => p.name.toLowerCase().includes(lf))
+            const allTypes = [...BUILTIN_OBJECT_TYPES, ...objectTypes].filter(t => !deletedObjectTypes.includes(t.id))
+            const trimmedFilter = mentionFilter.trim()
+            const exactMatchPeople = filteredPeople.some(p => p.name.toLowerCase() === trimmedFilter.toLowerCase())
+            const canCreate = trimmedFilter.length > 0 && !exactMatchPeople
+            const createOptions = canCreate ? allTypes : []
+            const totalItems = filteredNotes.length + filteredPeople.length + createOptions.length
+            if (e.key === 'ArrowDown') { e.preventDefault(); setMentionIdx(i => Math.min(i + 1, Math.max(totalItems - 1, 0))); return }
             if (e.key === 'ArrowUp') { e.preventDefault(); setMentionIdx(i => Math.max(i - 1, 0)); return }
             if (e.key === 'Enter') {
                 e.preventDefault()
-                if (filteredPeople[mentionIdx]) {
-                    insertMention(filteredPeople[mentionIdx].name)
-                } else if (mentionIdx === filteredPeople.length && mentionFilter.trim()) {
-                    const person = onCreatePerson(mentionFilter.trim())
-                    insertMention(person.name)
+                if (mentionIdx < filteredNotes.length) {
+                    insertNoteMention(filteredNotes[mentionIdx])
+                } else {
+                    const peopleIdx = mentionIdx - filteredNotes.length
+                    if (filteredPeople[peopleIdx]) {
+                        insertMention(filteredPeople[peopleIdx].name)
+                    } else if (canCreate) {
+                        const createIdx = mentionIdx - filteredNotes.length - filteredPeople.length
+                        if (createOptions[createIdx]) {
+                            const person = onCreatePerson(trimmedFilter, createOptions[createIdx].id)
+                            insertMention(person.name)
+                        }
+                    }
                 }
                 return
             }
@@ -426,6 +440,86 @@ export function BlockItem({ block, index, listIndex, numBlocks, isFocused, isSel
             }
         } catch { }
         onUpdate(block.id, { content: newText })
+        setShowMentionMenu(false)
+        setMentionFilter('')
+        mentionAnchorRef.current = -1
+    }
+
+    // ── Note mention (page link) insertion ────────────────────────────────────
+    function insertNoteMention(targetNote: Note) {
+        const el = ref.current
+        if (!el || mentionAnchorRef.current === -1) return
+        const anchorPos = mentionAnchorRef.current
+
+        // Find current cursor position as plain-text offset
+        let cursorPos = (el.textContent || '').length
+        const sel = window.getSelection()
+        if (!sel) { setShowMentionMenu(false); return }
+        if (sel.rangeCount > 0) {
+            try {
+                const range = sel.getRangeAt(0)
+                const pre = document.createRange()
+                pre.setStart(el, 0)
+                pre.setEnd(range.startContainer, range.startOffset)
+                cursorPos = pre.toString().length
+            } catch { }
+        }
+
+        // Walk text nodes to find DOM start/end positions for anchorPos..cursorPos
+        const walker = document.createTreeWalker(el, NodeFilter.SHOW_TEXT)
+        let charCount = 0
+        let startNode: Text | null = null, startOff = 0
+        let endNode: Text | null = null, endOff = 0
+
+        while (walker.nextNode()) {
+            const node = walker.currentNode as Text
+            const len = node.length
+            if (!startNode && charCount + len >= anchorPos) {
+                startNode = node
+                startOff = anchorPos - charCount
+            }
+            if (startNode && !endNode && charCount + len >= cursorPos) {
+                endNode = node
+                endOff = cursorPos - charCount
+                break
+            }
+            charCount += len
+        }
+
+        if (!startNode) { setShowMentionMenu(false); return }
+        if (!endNode) { endNode = startNode; endOff = startNode.length }
+
+        // Delete the @filter text using a range
+        const deleteRange = document.createRange()
+        deleteRange.setStart(startNode, startOff)
+        deleteRange.setEnd(endNode, endOff)
+        deleteRange.deleteContents()
+
+        // Build the note-mention chip span
+        const span = document.createElement('span')
+        span.setAttribute('data-note-mention', targetNote.id)
+        span.setAttribute('contenteditable', 'false')
+        span.className = 'note-mention-chip'
+        span.textContent = targetNote.title || 'Untitled'
+
+        // Insert: trailing space first (insertNode prepends), then the span
+        deleteRange.insertNode(document.createTextNode('\u00a0'))
+        deleteRange.insertNode(span)
+
+        // Place cursor after the trailing non-breaking space
+        const trailingSpace = span.nextSibling
+        const newRange = document.createRange()
+        if (trailingSpace && trailingSpace.nodeType === Node.TEXT_NODE) {
+            newRange.setStart(trailingSpace, trailingSpace.textContent!.length)
+            newRange.collapse(true)
+        } else {
+            newRange.setStartAfter(span)
+            newRange.collapse(true)
+        }
+        sel.removeAllRanges()
+        sel.addRange(newRange)
+
+        onUpdate(block.id, { content: el.innerHTML })
         setShowMentionMenu(false)
         setMentionFilter('')
         mentionAnchorRef.current = -1
@@ -834,6 +928,13 @@ export function BlockItem({ block, index, listIndex, numBlocks, isFocused, isSel
                             e.stopPropagation()
                             return
                         }
+                        const noteChip = target.closest('[data-note-mention]') as HTMLElement | null
+                        if (noteChip) {
+                            e.stopPropagation()
+                            const noteId = noteChip.getAttribute('data-note-mention')
+                            if (noteId && onNavigateTo) onNavigateTo(noteId)
+                            return
+                        }
                         if (target.matches('[data-mention]')) {
                             e.stopPropagation()
                             const name = target.getAttribute('data-mention')
@@ -921,6 +1022,13 @@ export function BlockItem({ block, index, listIndex, numBlocks, isFocused, isSel
                                     onClick={(e) => {
                                         if (handleViewDateClick(e)) return
                                         const target = e.target as HTMLElement
+                                        const noteChip = target.closest('[data-note-mention]') as HTMLElement | null
+                                        if (noteChip) {
+                                            e.stopPropagation()
+                                            const noteId = noteChip.getAttribute('data-note-mention')
+                                            if (noteId && onNavigateTo) onNavigateTo(noteId)
+                                            return
+                                        }
                                         if (target.matches('[data-mention]')) {
                                             e.stopPropagation()
                                             const name = target.getAttribute('data-mention')
@@ -980,6 +1088,13 @@ export function BlockItem({ block, index, listIndex, numBlocks, isFocused, isSel
                                         onClick={(e) => {
                                             if (handleViewDateClick(e)) return
                                             const target = e.target as HTMLElement
+                                            const noteChip = target.closest('[data-note-mention]') as HTMLElement | null
+                                            if (noteChip) {
+                                                e.stopPropagation()
+                                                const noteId = noteChip.getAttribute('data-note-mention')
+                                                if (noteId && onNavigateTo) onNavigateTo(noteId)
+                                                return
+                                            }
                                             if (target.matches('[data-mention]')) {
                                                 e.stopPropagation()
                                                 const name = target.getAttribute('data-mention')
@@ -1037,10 +1152,10 @@ export function BlockItem({ block, index, listIndex, numBlocks, isFocused, isSel
 
             {/* @ Mention menu */}
             {showMentionMenu && (() => {
+                const lf = mentionFilter.toLowerCase()
+                const filteredNotes = notes.filter(n => n.title.toLowerCase().includes(lf))
                 const allTypes = [...BUILTIN_OBJECT_TYPES, ...objectTypes].filter(t => !deletedObjectTypes.includes(t.id))
-                const filteredObjects = people.filter(p =>
-                    p.name.toLowerCase().includes(mentionFilter.toLowerCase())
-                )
+                const filteredObjects = people.filter(p => p.name.toLowerCase().includes(lf))
                 const trimmedFilter = mentionFilter.trim()
                 const exactMatch = filteredObjects.some(p => p.name.toLowerCase() === trimmedFilter.toLowerCase())
                 const canCreate = trimmedFilter.length > 0 && !exactMatch
@@ -1048,15 +1163,41 @@ export function BlockItem({ block, index, listIndex, numBlocks, isFocused, isSel
                 const NEW_TYPE_ICONS = ['MapPin', 'Clipboard', 'Building2', 'Target', 'Briefcase', 'Wrench', 'Globe', 'Calendar', 'Tent', 'Key', 'Puzzle', 'Star']
                 return (
                     <div className="absolute left-12 top-full z-50 mt-1 w-64 rounded-lg border bg-popover shadow-lg overflow-hidden">
-                        <div className="px-2 py-1.5 text-[10px] text-muted-foreground font-medium tracking-wider border-b flex items-center gap-1.5">
-                            <User className="w-3 h-3" />
-                            OBJECTS
-                        </div>
-                        <div className="py-1 max-h-72 overflow-y-auto">
-                            {filteredObjects.length === 0 && !canCreate && (
+                        <div className="py-1 max-h-80 overflow-y-auto">
+                            {/* ── PAGES section ── */}
+                            {filteredNotes.length > 0 && (
+                                <>
+                                    <div className="px-2 pt-1.5 pb-0.5 text-[10px] text-muted-foreground font-medium tracking-wider flex items-center gap-1.5">
+                                        <FileText className="w-3 h-3" />
+                                        PAGES
+                                    </div>
+                                    {filteredNotes.map((n, i) => (
+                                        <button key={n.id}
+                                            className={cn("w-full flex items-center gap-2.5 px-3 py-1.5 text-sm hover:bg-accent transition-colors text-left",
+                                                i === mentionIdx && 'bg-accent')}
+                                            onMouseDown={e => { e.preventDefault(); insertNoteMention(n) }}
+                                        >
+                                            <NoteIcon iconName={n.emoji} className="w-4 h-4 text-muted-foreground/60 leading-none" />
+                                            <span className="flex-1 truncate">{n.title || 'Untitled'}</span>
+                                        </button>
+                                    ))}
+                                </>
+                            )}
+
+                            {/* ── OBJECTS section ── */}
+                            {(filteredObjects.length > 0 || canCreate) && (
+                                <>
+                                    {filteredNotes.length > 0 && <div className="border-t my-1" />}
+                                    <div className="px-2 pt-1.5 pb-0.5 text-[10px] text-muted-foreground font-medium tracking-wider flex items-center gap-1.5">
+                                        <User className="w-3 h-3" />
+                                        OBJECTS
+                                    </div>
+                                </>
+                            )}
+                            {filteredObjects.length === 0 && !canCreate && filteredNotes.length === 0 && (
                                 <div className="px-3 py-3 text-sm text-muted-foreground text-center">
                                     <User className="w-4 h-4 mx-auto mb-1 opacity-40" />
-                                    Type a name to create an object
+                                    Type a name to link a page or create an object
                                 </div>
                             )}
                             {filteredObjects.map((person, i) => {
@@ -1064,7 +1205,7 @@ export function BlockItem({ block, index, listIndex, numBlocks, isFocused, isSel
                                 return (
                                     <button key={person.id}
                                         className={cn("w-full flex items-center gap-2.5 px-3 py-1.5 text-sm hover:bg-accent transition-colors text-left",
-                                            i === mentionIdx && 'bg-accent')}
+                                            filteredNotes.length + i === mentionIdx && 'bg-accent')}
                                         onMouseDown={e => { e.preventDefault(); insertMention(person.name) }}
                                     >
                                         <NoteIcon iconName={person.emoji} className="w-4 h-4 text-muted-foreground/60 leading-none" />
@@ -1083,7 +1224,7 @@ export function BlockItem({ block, index, listIndex, numBlocks, isFocused, isSel
                                         <button
                                             key={objType.id}
                                             className={cn("w-full flex items-center gap-2.5 px-3 py-1.5 text-sm hover:bg-accent transition-colors text-left",
-                                                filteredObjects.length + i === mentionIdx && 'bg-accent')}
+                                                filteredNotes.length + filteredObjects.length + i === mentionIdx && 'bg-accent')}
                                             onMouseDown={e => {
                                                 e.preventDefault()
                                                 const person = onCreatePerson(trimmedFilter, objType.id)

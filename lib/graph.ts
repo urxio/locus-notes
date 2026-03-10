@@ -74,6 +74,22 @@ export function buildGraph(notes: Note[], people: Person[], w: number, h: number
             })
         })
     })
+    // Page mention edges: connect notes that embed another note via data-note-mention span
+    notes.forEach(note => {
+        note.blocks.forEach(block => {
+            const content = (block.content ?? '') + ' ' + (block.expandedContent ?? '')
+            const re = /data-note-mention="([a-zA-Z0-9_-]+)"/g
+            let m: RegExpExecArray | null
+            while ((m = re.exec(content)) !== null) {
+                const targetId = m[1]
+                if (targetId === note.id) continue
+                const src = `note:${note.id}`, tgt = `note:${targetId}`
+                if (!edges.some(e => e.source === src && e.target === tgt))
+                    edges.push({ source: src, target: tgt })
+            }
+        })
+    })
+
     return { nodes, edges }
 }
 

@@ -60,9 +60,15 @@ export function injectMentionsIntoHtml(html: string, people: Person[]): string {
     if (!html) return ''
     const names = people.map(p => p.name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).filter(Boolean)
     if (names.length === 0) return html
-    const mentionRe = new RegExp(`(<[^>]*>)|(@(?:${names.join('|')}))`, 'gi')
-    return html.replace(mentionRe, (match, tag, name) => {
-        if (tag) return match
+    // Group 1: entire note-mention chip — skip atomically so its inner text is not re-processed
+    // Group 2: any HTML tag — skip
+    // Group 3: @PersonName — wrap in mention span
+    const mentionRe = new RegExp(
+        `(<span[^>]*data-note-mention[^>]*>[^<]*<\\/span>)|(<[^>]*>)|(@(?:${names.join('|')}))`,
+        'gi'
+    )
+    return html.replace(mentionRe, (match, noteSpan, tag, name) => {
+        if (noteSpan || tag) return match
         return `<span data-mention="${name.slice(1)}" class="underline decoration-dotted underline-offset-2 font-medium text-foreground/90 cursor-pointer hover:text-primary transition-colors">${match}</span>`
     })
 }

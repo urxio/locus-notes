@@ -90,3 +90,28 @@
     @apply bg-background text-foreground;
   }
 }
+
+/* ── Note-mention chip (page links via @[[PageTitle]]) ─────────────────────── */
+.note-mention-chip {
+  display: inline;
+  padding: 1px 6px 2px;
+  border-radius: 4px;
+  font-size: 0.85em;
+  font-weight: 500;
+  cursor: pointer;
+  user-select: none;
+  vertical-align: baseline;
+  line-height: inherit;
+  transition: opacity 0.15s;
+  background: rgba(139, 92, 246, 0.12);
+  color: rgb(109, 40, 217);
+  border: 1px solid rgba(139, 92, 246, 0.28);
+}
+.dark .note-mention-chip {
+  background: rgba(139, 92, 246, 0.2);
+  color: rgb(196, 167, 255);
+  border-color: rgba(139, 92, 246, 0.4);
+}
+.note-mention-chip:hover {
+  opacity: 0.72;
+}

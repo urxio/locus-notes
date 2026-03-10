@@ -222,30 +222,76 @@ export default function NotesPage() {
     setActiveTag(null)
   }
 
+  /** Update the display text inside all data-note-mention spans that point to `noteId`. */
+  function patchNoteMentionSpans(html: string, noteId: string, newTitle: string): string {
+    if (!html || !html.includes(`data-note-mention="${noteId}"`)) return html
+    const tmp = document.createElement('div')
+    tmp.innerHTML = html
+    tmp.querySelectorAll(`[data-note-mention="${noteId}"]`).forEach(span => {
+      span.textContent = newTitle || 'Untitled'
+    })
+    return tmp.innerHTML
+  }
+
   function updateNote(id: string, patch: Partial<Note>) {
     // When a person-linked note's title changes, propagate rename to all @mentions
     if (patch.title !== undefined) {
+      const newTitle = patch.title
       const personForNote = people.find(p => p.noteId === id)
-      if (personForNote && patch.title !== personForNote.name) {
+      if (personForNote && newTitle !== personForNote.name) {
         const oldName = personForNote.name
-        const newName = patch.title
         // Update the person's stored name
-        setPeople(prev => prev.map(p => p.id === personForNote.id ? { ...p, name: newName } : p))
-        // Replace @OldName with @NewName in every note's block content
+        setPeople(prev => prev.map(p => p.id === personForNote.id ? { ...p, name: newTitle } : p))
+        // Replace @OldName with @NewName AND update data-note-mention spans in every note
         const escOld = oldName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
         const mentionRe = new RegExp('@' + escOld, 'g')
         setNotes(prev => prev.map(n => ({
           ...n,
           ...(n.id === id ? patch : {}),
-          blocks: n.blocks.map(b => ({
-            ...b,
-            content: b.content.replace(mentionRe, '@' + newName),
-            ...(b.expandedContent != null
-              ? { expandedContent: b.expandedContent.replace(mentionRe, '@' + newName) }
-              : {}),
-          })),
+          blocks: n.blocks.map(b => {
+            const updContent = patchNoteMentionSpans(
+              b.content.replace(mentionRe, '@' + newTitle), id, newTitle
+            )
+            const updExpanded = b.expandedContent != null
+              ? patchNoteMentionSpans(b.expandedContent.replace(mentionRe, '@' + newTitle), id, newTitle)
+              : b.expandedContent
+            return {
+              ...b,
+              content: updContent,
+              ...(b.expandedContent != null ? { expandedContent: updExpanded } : {}),
+            }
+          }),
           updatedAt: Date.now(),
         })))
+        return
+      }
+      // Not a person-linked note — still propagate title to data-note-mention spans
+      const needsUpdate = notes.some(n =>
+        n.id !== id && n.blocks.some(b =>
+          b.content.includes(`data-note-mention="${id}"`) ||
+          (b.expandedContent || '').includes(`data-note-mention="${id}"`)
+        )
+      )
+      if (needsUpdate) {
+        setNotes(prev => prev.map(n => {
+          if (n.id === id) return { ...n, ...patch, updatedAt: Date.now() }
+          const affected = n.blocks.some(b =>
+            b.content.includes(`data-note-mention="${id}"`) ||
+            (b.expandedContent || '').includes(`data-note-mention="${id}"`)
+          )
+          if (!affected) return n
+          return {
+            ...n,
+            blocks: n.blocks.map(b => ({
+              ...b,
+              content: patchNoteMentionSpans(b.content, id, newTitle),
+              ...(b.expandedContent != null
+                ? { expandedContent: patchNoteMentionSpans(b.expandedContent, id, newTitle) }
+                : {}),
+            })),
+            updatedAt: Date.now(),
+          }
+        }))
         return
       }
     }
@@ -374,6 +420,7 @@ export default function NotesPage() {
                 onCreateObjectType={createObjectType}
                 sidebarOpen={sidebarOpen}
                 onToggleSidebar={() => setSidebarOpen(true)}
+                notes={notes}
               />
             ) : (
               <div className="flex flex-col items-center justify-center h-full gap-4">
