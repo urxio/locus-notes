@@ -218,23 +218,39 @@ export function GraphPanel({ notes, people, activeNoteId, onSelectNote, isExpand
     const allEdges = edgesRef.current
     const nodeMap = new Map(allNodes.map(n => [n.id, n]))
 
-    // ── Local mode filter: only active note + its 1-hop neighbours ──────────
+    // ── Local mode filter ────────────────────────────────────────────────────
+    // Show the active note + all its direct neighbours (tags, @mention notes).
+    // Then expand through every tag neighbour to include sibling notes that
+    // share the same tag — so two pages with the same tag both appear,
+    // connected via that shared tag node.
     let visibleNodes: GNode[]
     let visibleEdges: GEdge[]
 
     if (localMode && activeNoteId) {
         const activeNode = allNodes.find(n => n.noteId === activeNoteId)
         if (activeNode) {
-            // Direct edges from/to the active note
-            const directEdges = allEdges.filter(e => e.source === activeNode.id || e.target === activeNode.id)
-            const neighborIds = new Set<string>([activeNode.id])
-            for (const e of directEdges) {
-                neighborIds.add(e.source)
-                neighborIds.add(e.target)
-            }
-            visibleNodes = allNodes.filter(n => neighborIds.has(n.id))
-            // All edges that are fully contained within the visible set
-            visibleEdges = allEdges.filter(e => neighborIds.has(e.source) && neighborIds.has(e.target))
+            const visibleIds = new Set<string>([activeNode.id])
+
+            // Step 1 — direct neighbours of the active note
+            allEdges.forEach(e => {
+                if (e.source === activeNode.id) visibleIds.add(e.target)
+                if (e.target === activeNode.id) visibleIds.add(e.source)
+            })
+
+            // Step 2 — for every TAG neighbour, pull in all other notes
+            // connected to that same tag (siblings sharing the tag)
+            visibleIds.forEach(id => {
+                if (nodeMap.get(id)?.type === 'tag') {
+                    allEdges.forEach(e => {
+                        if (e.source === id) visibleIds.add(e.target)
+                        if (e.target === id) visibleIds.add(e.source)
+                    })
+                }
+            })
+
+            visibleNodes = allNodes.filter(n => visibleIds.has(n.id))
+            // All edges whose both endpoints are in the visible set
+            visibleEdges = allEdges.filter(e => visibleIds.has(e.source) && visibleIds.has(e.target))
         } else {
             // Active note not yet in graph (e.g. no tags/links) — show nothing
             visibleNodes = []
