@@ -425,7 +425,8 @@ export function GraphPanel({ notes, people, activeNoteId, onSelectNote, isExpand
                             e.currentTarget.style.color = localMode ? T.ctrlActiveText : T.ctrlText
                             e.currentTarget.style.borderColor = localMode ? T.ctrlActiveBorder : T.ctrlBorder
                         }}
-                        onClick={e => { e.stopPropagation(); setLocalMode(m => !m) }}
+                        onPointerDown={e => e.stopPropagation()}
+                        onClick={() => setLocalMode(m => !m)}
                         title={localMode ? 'Show all pages in graph' : 'Focus on current page only'}
                     >
                         {localMode
@@ -439,7 +440,8 @@ export function GraphPanel({ notes, people, activeNoteId, onSelectNote, isExpand
                         style={{ background: T.ctrl, border: `1px solid ${T.ctrlBorder}`, color: T.ctrlText }}
                         onMouseEnter={e => { const el = e.currentTarget; el.style.color = T.ctrlHoverText; el.style.borderColor = T.ctrlHoverBorder }}
                         onMouseLeave={e => { const el = e.currentTarget; el.style.color = T.ctrlText; el.style.borderColor = T.ctrlBorder }}
-                        onClick={e => { e.stopPropagation(); onToggleExpand() }}
+                        onPointerDown={e => e.stopPropagation()}
+                        onClick={onToggleExpand}
                         title={isExpanded ? 'Reduce graph' : 'Expand graph'}
                     >
                         {isExpanded
@@ -461,7 +463,8 @@ export function GraphPanel({ notes, people, activeNoteId, onSelectNote, isExpand
                         style={{ background: T.ctrl, border: `1px solid ${T.ctrlBorder}`, color: T.ctrlText }}
                         onMouseEnter={e => { const el = e.currentTarget; el.style.color = T.ctrlHoverText; el.style.borderColor = T.ctrlHoverBorder }}
                         onMouseLeave={e => { const el = e.currentTarget; el.style.color = T.ctrlText; el.style.borderColor = T.ctrlBorder }}
-                        onClick={e => { e.stopPropagation(); fn() }}
+                        onPointerDown={e => e.stopPropagation()}
+                        onClick={fn}
                     >{label}</button>
                 ))}
             </div>
@@ -487,6 +490,7 @@ export function GraphPanel({ notes, people, activeNoteId, onSelectNote, isExpand
                             }}
                             onMouseEnter={e => { e.currentTarget.style.color = T.ctrlHoverText; e.currentTarget.style.borderColor = T.ctrlHoverBorder }}
                             onMouseLeave={e => { e.currentTarget.style.color = T.ctrlText; e.currentTarget.style.borderColor = T.ctrlBorder }}
+                            onPointerDown={e => e.stopPropagation()}
                             onClick={() => setLocalMode(false)}
                         >
                             <Globe className="w-2.5 h-2.5" />
