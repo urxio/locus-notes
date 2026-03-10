@@ -62,6 +62,12 @@ export function GraphPanel({ notes, people, activeNoteId, onSelectNote, isExpand
     const panRef = useRef({ active: false, sx: 0, sy: 0, spx: 0, spy: 0 })
     const dragRef = useRef<{ id: string; ox: number; oy: number } | null>(null)
 
+    // Keep a ref so the graphKey effect can read the current active note
+    // without becoming a dependency (which would rebuild the graph on every
+    // note-switch, discarding all settled positions).
+    const activeNoteIdRef = useRef(activeNoteId)
+    useEffect(() => { activeNoteIdRef.current = activeNoteId }, [activeNoteId])
+
     // ── Local / global mode ────────────────────────────────────────────────
     // Default: focus on the current page's connections only.
     const [localMode, setLocalMode] = useState(true)
@@ -96,6 +102,28 @@ export function GraphPanel({ notes, people, activeNoteId, onSelectNote, isExpand
     useEffect(() => {
         const existingMap = new Map(nodesRef.current.map(n => [n.id, n]))
         const { nodes, edges } = buildGraph(notes, people, sizeRef.current.w, sizeRef.current.h, existingMap)
+
+        // New nodes that are direct neighbours of the active note should start
+        // near it (not at a random graph-centre position) so they appear
+        // in-viewport immediately rather than animating in from off-screen.
+        const activeNode = nodes.find(n => n.noteId === activeNoteIdRef.current)
+        if (activeNode) {
+            const neighborIds = new Set<string>()
+            edges.forEach(e => {
+                if (e.source === activeNode.id) neighborIds.add(e.target)
+                if (e.target === activeNode.id) neighborIds.add(e.source)
+            })
+            nodes.forEach(node => {
+                if (neighborIds.has(node.id) && !existingMap.has(node.id)) {
+                    // Brand-new neighbour — spawn it close to the active note
+                    const angle = Math.random() * Math.PI * 2
+                    node.x = activeNode.x + Math.cos(angle) * 30
+                    node.y = activeNode.y + Math.sin(angle) * 30
+                    node.vx = 0; node.vy = 0
+                }
+            })
+        }
+
         nodesRef.current = nodes
         edgesRef.current = edges
         tickCountRef.current = 0

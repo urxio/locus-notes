@@ -1,5 +1,19 @@
 import { Note, Person, GNode, GEdge } from "./types"
 
+/**
+ * Strip HTML tags and decode basic entities so the @mention regex works
+ * correctly on contenteditable innerHTML (which may contain span wrappers,
+ * bold/italic marks, etc.).
+ */
+function stripHtml(s: string): string {
+    return s
+        .replace(/<[^>]+>/g, ' ')   // remove all tags → replace with space
+        .replace(/&nbsp;/g, ' ')
+        .replace(/&amp;/g, '&')
+        .replace(/&lt;/g, '<')
+        .replace(/&gt;/g, '>')
+}
+
 export function buildGraph(notes: Note[], people: Person[], w: number, h: number, existingNodes?: Map<string, GNode>): { nodes: GNode[]; edges: GEdge[] } {
     const nodes: GNode[] = []
     const edges: GEdge[] = []
@@ -41,7 +55,7 @@ export function buildGraph(notes: Note[], people: Person[], w: number, h: number
     )
     notes.forEach(note => {
         note.blocks.forEach(block => {
-            const matches = (block.content + ' ' + (block.expandedContent ?? '')).match(/@(\S+)/g)
+            const matches = stripHtml(block.content + ' ' + (block.expandedContent ?? '')).match(/@(\S+)/g)
             if (!matches) return
             matches.forEach(m => {
                 const name = m.slice(1).toLowerCase()
