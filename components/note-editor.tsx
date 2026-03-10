@@ -447,47 +447,106 @@ export function NoteEditor({ note, allTags, onChange, onDelete, people, onCreate
             const forward = startIdx <= endIdx
             const [fromIdx, toIdx] = forward ? [startIdx, endIdx] : [endIdx, startIdx]
             const [fromEl, toEl] = forward ? [startBlockEl, endBlockEl] : [endBlockEl, startBlockEl]
-            const [fromNode, fromOff] = forward
+            const [fromSelNode, fromSelOff] = forward
                 ? [range.startContainer, range.startOffset]
                 : [range.endContainer, range.endOffset]
-            const [toNode, toOff] = forward
+            const [toSelNode, toSelOff] = forward
                 ? [range.endContainer, range.endOffset]
                 : [range.startContainer, range.startOffset]
-
-            // Get contenteditable within a block (fall back to block el itself)
-            function getEditable(el: HTMLElement): HTMLElement {
-                return (el.querySelector('[contenteditable]') as HTMLElement) ?? el
-            }
-
-            const fromEditable = getEditable(fromEl)
-            const toEditable = getEditable(toEl)
-
-            // Measure plain-text offset from start of each editable to the range endpoint
-            let startTextOffset = 0
-            let endTextOffset = (toEditable.textContent || '').length
-
-            try {
-                const r = document.createRange()
-                r.setStart(fromEditable, 0)
-                r.setEnd(fromNode, fromOff)
-                startTextOffset = r.toString().length
-            } catch { startTextOffset = 0 }
-
-            try {
-                const r = document.createRange()
-                r.setStart(toEditable, 0)
-                r.setEnd(toNode, toOff)
-                endTextOffset = r.toString().length
-            } catch { endTextOffset = (toEditable.textContent || '').length }
 
             const fromBlock = blocks[fromIdx]
             const toBlock = blocks[toIdx]
 
-            // Merge: keep text before cursor in start block + optional char + text after cursor in end block
-            const mergedContent = fromBlock.content.slice(0, startTextOffset)
-                + (charToInsert ?? '')
-                + toBlock.content.slice(endTextOffset)
-            const cursorPos = startTextOffset + (charToInsert ? charToInsert.length : 0)
+            // Find the actual visible element (contenteditable OR view-mode div) that
+            // contains the selection node. When a block is unfocused its contenteditable
+            // is display:none and the browser selection lands in the view-mode div instead.
+            // Always using querySelector('[contenteditable]') would produce a cross-subtree
+            // range that yields a corrupted text offset.
+            function findActualContentEl(blockEl: HTMLElement, selNode: Node): HTMLElement {
+                const ce = blockEl.querySelector('[contenteditable="true"]') as HTMLElement | null
+                if (ce?.contains(selNode)) return ce
+                // selNode is in the view-mode div — find the sibling that actually contains it
+                const parent = ce?.parentNode ?? blockEl
+                for (const child of Array.from(parent.childNodes)) {
+                    if (child instanceof HTMLElement && child !== ce && child.contains(selNode)) return child
+                }
+                return ce ?? blockEl
+            }
+
+            // Measure plain-text characters from start of `container` to `selNode/selOff`
+            function measureTextOffset(container: HTMLElement, selNode: Node, selOff: number): number {
+                try {
+                    const r = document.createRange()
+                    r.setStart(container, 0)
+                    r.setEnd(selNode, selOff)
+                    return r.toString().length
+                } catch { return 0 }
+            }
+
+            // Extract HTML from a raw HTML string up to a plain-text character offset.
+            // Uses DOM Range.cloneContents so unclosed tags are handled correctly.
+            function htmlBefore(html: string, textOffset: number): string {
+                if (!html || textOffset <= 0) return ''
+                const el = document.createElement('div')
+                el.innerHTML = html
+                if (textOffset >= (el.textContent?.length ?? 0)) return html
+                const walker = document.createTreeWalker(el, NodeFilter.SHOW_TEXT)
+                let rem = textOffset; let node: Text | null = null; let off = 0
+                while (walker.nextNode()) {
+                    const t = walker.currentNode as Text
+                    if (rem <= t.length) { node = t; off = rem; break }
+                    rem -= t.length
+                }
+                if (!node) return html
+                try {
+                    const r = document.createRange()
+                    r.setStart(el, 0); r.setEnd(node, off)
+                    const div = document.createElement('div')
+                    div.appendChild(r.cloneContents())
+                    return div.innerHTML
+                } catch { return '' }
+            }
+
+            // Extract HTML from a plain-text character offset to end of a raw HTML string.
+            function htmlAfter(html: string, textOffset: number): string {
+                if (!html) return ''
+                const el = document.createElement('div')
+                el.innerHTML = html
+                const total = el.textContent?.length ?? 0
+                if (textOffset <= 0) return html
+                if (textOffset >= total) return ''
+                const walker = document.createTreeWalker(el, NodeFilter.SHOW_TEXT)
+                let rem = textOffset; let node: Text | null = null; let off = 0
+                while (walker.nextNode()) {
+                    const t = walker.currentNode as Text
+                    if (rem <= t.length) { node = t; off = rem; break }
+                    rem -= t.length
+                }
+                if (!node) return ''
+                try {
+                    const endR = document.createRange()
+                    endR.selectNodeContents(el)
+                    const r = document.createRange()
+                    r.setStart(node, off); r.setEnd(endR.endContainer, endR.endOffset)
+                    const div = document.createElement('div')
+                    div.appendChild(r.cloneContents())
+                    return div.innerHTML
+                } catch { return '' }
+            }
+
+            const fromContentEl = findActualContentEl(fromEl, fromSelNode)
+            const toContentEl = findActualContentEl(toEl, toSelNode)
+
+            const startTextOffset = measureTextOffset(fromContentEl, fromSelNode, fromSelOff)
+            const endTextOffset = measureTextOffset(toContentEl, toSelNode, toSelOff)
+
+            // Merge: keep HTML before cursor in start block + optional char + HTML after cursor in end block.
+            // htmlBefore/htmlAfter work on raw block.content (not the processed view-mode HTML) so that
+            // linkified URLs and mention spans are never double-applied on the next render.
+            const before = htmlBefore(fromBlock.content, startTextOffset)
+            const after = htmlAfter(toBlock.content, endTextOffset)
+            const mergedContent = before + (charToInsert ?? '') + after
+            const cursorTextPos = startTextOffset + (charToInsert ? charToInsert.length : 0)
 
             // Build new blocks array: replace fromBlock with merged, drop everything from fromIdx+1..toIdx
             const newBlocks: Block[] = []
@@ -497,11 +556,10 @@ export function NoteEditor({ note, allTags, onChange, onDelete, people, onCreate
                 else newBlocks.push(blocks[i])
             }
 
-            // Synchronously update the start-block's DOM before React re-renders.
-            // The BlockItem content-sync effect only fires on type changes (by design,
-            // to prevent cursor jumps during typing), so we must patch the DOM here —
-            // otherwise the contenteditable still shows the old text after deletion.
-            if (fromEditable) fromEditable.textContent = mergedContent
+            // Synchronously patch the from-block's contenteditable DOM (innerHTML preserves
+            // rich formatting; the old code used textContent which stripped all HTML tags).
+            const fromEditable = fromEl.querySelector('[contenteditable="true"]') as HTMLElement | null
+            if (fromEditable) fromEditable.innerHTML = mergedContent
 
             // Clear the browser selection before updating React state
             sel.removeAllRanges()
@@ -518,24 +576,25 @@ export function NoteEditor({ note, allTags, onChange, onDelete, people, onCreate
                 if (!el) return
                 el.focus()
                 try {
-                    const textNode = el.firstChild
-                    if (textNode && textNode.nodeType === Node.TEXT_NODE) {
-                        const r = document.createRange()
-                        const pos = Math.min(cursorPos, textNode.textContent?.length ?? 0)
-                        r.setStart(textNode, pos)
-                        r.collapse(true)
-                        const s = window.getSelection()
-                        s?.removeAllRanges()
-                        s?.addRange(r)
-                    } else {
-                        // Empty block — place at start
-                        const r = document.createRange()
-                        r.setStart(el, 0)
-                        r.collapse(true)
-                        const s = window.getSelection()
-                        s?.removeAllRanges()
-                        s?.addRange(r)
+                    // Walk text nodes to find exact cursor position (handles rich HTML)
+                    const walker = document.createTreeWalker(el, NodeFilter.SHOW_TEXT)
+                    let rem = cursorTextPos
+                    let targetNode: Text | null = null; let targetOff = 0
+                    while (walker.nextNode()) {
+                        const t = walker.currentNode as Text
+                        if (rem <= t.length) { targetNode = t; targetOff = rem; break }
+                        rem -= t.length
                     }
+                    const r = document.createRange()
+                    if (targetNode) {
+                        r.setStart(targetNode, targetOff)
+                    } else {
+                        r.setStart(el, el.childNodes.length)
+                    }
+                    r.collapse(true)
+                    const s = window.getSelection()
+                    s?.removeAllRanges()
+                    s?.addRange(r)
                 } catch { }
             }, 0)
 
