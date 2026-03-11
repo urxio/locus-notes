@@ -1,6 +1,6 @@
 import React, { useState } from "react"
 import { createPortal } from "react-dom"
-import { Plus, PanelLeftClose, FileText, FolderPlus, Pencil, Trash2, X, Hash, Network } from "lucide-react"
+import { Plus, PanelLeftClose, FileText, FolderPlus, Pencil, Trash2, X, Hash, Network, ChevronRight } from "lucide-react"
 import { useTheme } from "next-themes"
 import { cn } from "@/lib/utils"
 import { ScrollArea } from "@/components/ui/scroll-area"
@@ -41,6 +41,7 @@ export function NavRail({ folders, selectedFolderId, onSelectFolder, people, obj
     const [editingName, setEditingName] = useState('')
     const [creatingType, setCreatingType] = useState<string | null>(null)
     const [creatingName, setCreatingName] = useState('')
+    const [collapsedTypes, setCollapsedTypes] = useState<Set<string>>(new Set())
     const [ctxMenu, setCtxMenu] = useState<{ x: number; y: number; type: 'person' | 'folder' | 'objectType'; id: string } | null>(null)
     const allTypes = [...BUILTIN_OBJECT_TYPES, ...objectTypes].filter(t => !deletedObjectTypes.includes(t.id))
     const visibleTypes = allTypes.filter(t => t.isBuiltin || people.some(p => (p.typeId ?? 'person') === t.id))
@@ -189,13 +190,27 @@ export function NavRail({ folders, selectedFolderId, onSelectFolder, people, obj
                                     const typeObjects = people.filter(p => (p.typeId ?? 'person') === objType.id)
                                     return (
                                         <div key={objType.id}>
-                                            <div
-                                                className="flex items-center gap-1.5 px-1.5 py-1 mb-1 bg-slate-50 dark:bg-zinc-800/50 rounded-md cursor-context-menu border border-slate-100 dark:border-zinc-700/50"
+                                            {/* Type header — click to collapse/expand, right-click for context menu */}
+                                            <button
+                                                className="w-full flex items-center gap-1.5 px-1.5 py-1 mb-1 bg-slate-50 dark:bg-zinc-800/50 rounded-md border border-slate-100 dark:border-zinc-700/50 hover:bg-slate-100 dark:hover:bg-zinc-700/60 transition-colors text-left"
+                                                onClick={() => setCollapsedTypes(prev => {
+                                                    const next = new Set(prev)
+                                                    next.has(objType.id) ? next.delete(objType.id) : next.add(objType.id)
+                                                    return next
+                                                })}
                                                 onContextMenu={e => { e.preventDefault(); e.stopPropagation(); setCtxMenu({ x: e.clientX, y: e.clientY, type: 'objectType', id: objType.id }) }}
                                             >
-                                                <NoteIcon iconName={objType.emoji} className="w-3.5 h-3.5 text-[#6b7280]" />
-                                                <span className="font-mono font-semibold text-[9px] uppercase tracking-[0.12em] text-[#374151] dark:text-zinc-300">{objType.name}</span>
-                                            </div>
+                                                <NoteIcon iconName={objType.emoji} className="w-3.5 h-3.5 text-[#6b7280] flex-shrink-0" />
+                                                <span className="font-mono font-semibold text-[9px] uppercase tracking-[0.12em] text-[#374151] dark:text-zinc-300 flex-1">{objType.name}</span>
+                                                {collapsedTypes.has(objType.id) && typeObjects.length > 0 && (
+                                                    <span className="font-mono text-[9px] text-[#d1d5db] dark:text-zinc-600 tabular-nums mr-0.5">{typeObjects.length}</span>
+                                                )}
+                                                <ChevronRight className={cn(
+                                                    "w-3 h-3 text-[#d1d5db] dark:text-zinc-600 transition-transform duration-150 flex-shrink-0",
+                                                    !collapsedTypes.has(objType.id) && "rotate-90"
+                                                )} />
+                                            </button>
+                                            {!collapsedTypes.has(objType.id) && (
                                             <div className="space-y-0.5">
                                                 {typeObjects.map(person => (
                                                     <div key={person.id} className="group/person flex items-center">
@@ -249,6 +264,7 @@ export function NavRail({ folders, selectedFolderId, onSelectFolder, people, obj
                                                     </button>
                                                 )}
                                             </div>
+                                            )}
                                         </div>
                                     )
                                 })}
