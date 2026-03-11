@@ -78,10 +78,16 @@ export default function NotesPage() {
   const [activeTag, setActiveTag] = useState<string | null>(null)
   const [selectedFolderId, setSelectedFolderId] = useState<string | null>(null)
   const [graphOpen, setGraphOpen] = useState(true)
-  const [graphWidth, setGraphWidth] = useState(320)
+  const [graphWidth, setGraphWidth] = useState(() => {
+    if (typeof window === 'undefined') return 320
+    return Number(localStorage.getItem('locus-graph-width') ?? 320)
+  })
   const graphResizingRef = useRef(false)
   const graphResizeStartRef = useRef({ x: 0, w: 320 })
-  const [col2Width, setCol2Width] = useState(280)
+  const [col2Width, setCol2Width] = useState(() => {
+    if (typeof window === 'undefined') return 280
+    return Number(localStorage.getItem('locus-col2-width') ?? 280)
+  })
   const col2ResizingRef = useRef(false)
   const col2ResizeStartRef = useRef({ x: 0, w: 280 })
   const [mounted, setMounted] = useState(false)
@@ -149,6 +155,10 @@ export default function NotesPage() {
       window.removeEventListener('mouseup', onMouseUp)
     }
   }, [])
+
+  // Persist column widths to localStorage
+  useEffect(() => { localStorage.setItem('locus-col2-width', String(col2Width)) }, [col2Width])
+  useEffect(() => { localStorage.setItem('locus-graph-width', String(graphWidth)) }, [graphWidth])
 
   // Auto-save notes
   useEffect(() => {
