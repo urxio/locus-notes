@@ -517,6 +517,7 @@ export default function NotesPage() {
                     .filter(p => !p.noteId || liveNotes.some(n => n.id === p.noteId))
                   return (
                     <ObjectBoardPanel
+                      key={boardType.id}
                       objectType={boardType}
                       objects={boardObjects}
                       notes={liveNotes}
