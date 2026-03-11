@@ -124,7 +124,7 @@ export function NoteEditor({ note, allTags, onChange, onDelete, people, onCreate
     const [tagInput, setTagInput] = useState('')
     const [tagSuggestions, setTagSuggestions] = useState<string[]>([])
     const [showEmojiPicker, setShowEmojiPicker] = useState(false)
-    const titleRef = useRef<HTMLInputElement>(null)
+    const titleRef = useRef<HTMLTextAreaElement>(null)
 
     // Auto-focus first block when a fresh (single empty block) note is opened
     useEffect(() => {
@@ -133,6 +133,14 @@ export function NoteEditor({ note, allTags, onChange, onDelete, people, onCreate
         }
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [])
+
+    // Resize title textarea whenever the note changes (e.g. switching notes)
+    useEffect(() => {
+        if (titleRef.current) {
+            titleRef.current.style.height = 'auto'
+            titleRef.current.style.height = titleRef.current.scrollHeight + 'px'
+        }
+    }, [note.id, note.title])
 
     function handleUpdateBlock(id: string, updates: Partial<Block>) {
         const next = note.blocks.map(b => b.id === id ? { ...b, ...updates } : b)
@@ -986,12 +994,21 @@ export function NoteEditor({ note, allTags, onChange, onDelete, people, onCreate
                                 </div>
                             )}
                         </div>
-                        <input
+                        <textarea
                             ref={titleRef}
                             value={note.title}
-                            onChange={e => onChange(note.id, { title: e.target.value })}
+                            onChange={e => {
+                                onChange(note.id, { title: e.target.value })
+                                e.target.style.height = 'auto'
+                                e.target.style.height = e.target.scrollHeight + 'px'
+                            }}
+                            onFocus={e => {
+                                e.target.style.height = 'auto'
+                                e.target.style.height = e.target.scrollHeight + 'px'
+                            }}
                             placeholder="Untitled"
-                            className="w-full text-4xl font-bold tracking-tight bg-transparent outline-none placeholder:text-[#d1d5db] dark:placeholder:text-zinc-600 border-none text-[#111827] dark:text-zinc-100"
+                            rows={1}
+                            className="w-full text-4xl font-bold tracking-tight bg-transparent outline-none placeholder:text-[#d1d5db] dark:placeholder:text-zinc-600 border-none text-[#111827] dark:text-zinc-100 resize-none overflow-hidden leading-tight"
                         />
                         {/* Created / edited dates */}
                         <div className="flex items-center gap-3 text-xs text-[#d1d5db] dark:text-zinc-600 select-none -mt-1">
