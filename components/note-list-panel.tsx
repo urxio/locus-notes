@@ -44,7 +44,7 @@ export function NoteListPanel({ notes, folders, selectedFolderId, activeTag, act
     }
 
     return (
-        <div className="flex flex-col h-full bg-white dark:bg-zinc-900">
+        <div className="flex flex-col h-full bg-[#F5F4F1] dark:bg-zinc-900">
             {/* Header */}
             <div className="px-4 pt-5 pb-3">
                 <div className="flex items-center justify-between mb-3">
@@ -61,7 +61,7 @@ export function NoteListPanel({ notes, folders, selectedFolderId, activeTag, act
                 <div className="relative">
                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3 h-3 text-stone-300 dark:text-zinc-600" />
                     <input value={search} onChange={e => onSearch(e.target.value)} placeholder="Search…"
-                        className="w-full pl-8 pr-4 py-2 rounded-xl bg-stone-100 dark:bg-zinc-800 text-[12px] text-stone-700 dark:text-zinc-300 placeholder-stone-300 dark:placeholder-zinc-600 border-0 outline-none focus:ring-2 focus:ring-stone-200 dark:focus:ring-zinc-700 transition-all"
+                        className="w-full pl-8 pr-4 py-2 rounded-xl bg-[#E8E6E3] dark:bg-zinc-800 text-[12px] text-stone-700 dark:text-zinc-300 placeholder-stone-400 dark:placeholder-zinc-600 border-0 outline-none focus:ring-2 focus:ring-stone-200/60 dark:focus:ring-zinc-700 transition-all"
                     />
                 </div>
             </div>
@@ -70,7 +70,7 @@ export function NoteListPanel({ notes, folders, selectedFolderId, activeTag, act
             <ScrollArea className="flex-1">
                 {notes.length === 0 ? (
                     <div className="flex flex-col items-center justify-center py-16 gap-3">
-                        <div className="w-12 h-12 rounded-2xl bg-stone-50 dark:bg-zinc-800 flex items-center justify-center">
+                        <div className="w-12 h-12 rounded-2xl bg-[#EEEDEA] dark:bg-zinc-800 flex items-center justify-center">
                             <FileText className="w-5 h-5 text-stone-200 dark:text-zinc-700" />
                         </div>
                         <p className="font-mono text-[9px] uppercase tracking-[0.15em] text-stone-300 dark:text-zinc-700">No notes</p>
@@ -87,8 +87,8 @@ export function NoteListPanel({ notes, folders, selectedFolderId, activeTag, act
                                     className={cn(
                                         "w-full text-left p-3 rounded-2xl transition-all",
                                         isActive
-                                            ? "bg-stone-100 dark:bg-zinc-800 shadow-sm ring-1 ring-stone-200/80 dark:ring-zinc-700/50"
-                                            : "bg-stone-50/70 dark:bg-zinc-800/30 hover:bg-stone-100/80 dark:hover:bg-zinc-800/60"
+                                            ? "bg-white dark:bg-zinc-800 shadow-sm ring-1 ring-stone-200/80 dark:ring-zinc-700/50"
+                                            : "bg-[#EEEDEA]/60 dark:bg-zinc-800/30 hover:bg-white/80 dark:hover:bg-zinc-800/60"
                                     )}
                                 >
                                     <div className="flex items-start justify-between gap-2 mb-1.5">
@@ -112,7 +112,7 @@ export function NoteListPanel({ notes, folders, selectedFolderId, activeTag, act
                                     {note.tags.length > 0 && (
                                         <div className="flex gap-1 mt-2 pl-9 flex-wrap">
                                             {note.tags.slice(0, 2).map(tag => (
-                                                <span key={tag} className="font-mono text-[9px] px-1.5 py-0.5 rounded-full bg-white dark:bg-zinc-700/60 text-stone-400 dark:text-zinc-500 ring-1 ring-stone-100 dark:ring-zinc-700">#{tag}</span>
+                                                <span key={tag} className="font-mono text-[9px] px-1.5 py-0.5 rounded-full bg-white/80 dark:bg-zinc-700/60 text-stone-400 dark:text-zinc-500 ring-1 ring-stone-200/60 dark:ring-zinc-700">#{tag}</span>
                                             ))}
                                             {note.tags.length > 2 && <span className="font-mono text-[9px] text-stone-300 dark:text-zinc-700">+{note.tags.length - 2}</span>}
                                         </div>
