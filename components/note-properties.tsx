@@ -35,6 +35,7 @@ function uid(): string { return Math.random().toString(36).slice(2, 10) }
 function defaultValue(t: PropertyType): NoteProperty['value'] {
     if (t === 'checkbox') return false
     if (t === 'multi_select') return []
+    if (t === 'person') return []
     return null
 }
 
@@ -201,35 +202,32 @@ function MultiSelectPopup({ opts, selected, onToggle, onAddOption, onRemoveOptio
     )
 }
 
-// ── PersonPopup ────────────────────────────────────────────────────────────────
+// ── PersonMultiPopup ───────────────────────────────────────────────────────────
 
-function PersonPopup({ people, value, onSelect, onClear }: {
+function PersonMultiPopup({ people, selected, onToggle }: {
     people: Person[]
-    value: string | null
-    onSelect: (id: string) => void
-    onClear: () => void
+    selected: string[]
+    onToggle: (id: string) => void
 }) {
     return (
         <div className="absolute z-50 top-full left-0 mt-1 w-48 rounded-xl border border-border bg-popover shadow-xl overflow-hidden py-1">
-            {value && (
-                <button
-                    className="w-full flex items-center gap-2 px-3 py-1.5 text-xs hover:bg-accent transition-colors text-muted-foreground"
-                    onMouseDown={e => e.preventDefault()} onClick={onClear}
-                >
-                    <X className="w-3 h-3" /> Clear
-                </button>
-            )}
             {people.length === 0
                 ? <p className="px-3 py-2 text-xs text-muted-foreground/50">No people yet</p>
                 : people.map(p => (
                     <button
                         key={p.id}
                         className="w-full flex items-center gap-2 px-3 py-1.5 text-xs hover:bg-accent transition-colors text-left"
-                        onMouseDown={e => e.preventDefault()} onClick={() => onSelect(p.id)}
+                        onMouseDown={e => e.preventDefault()}
+                        onClick={() => onToggle(p.id)}
                     >
+                        <div className={cn(
+                            'w-3.5 h-3.5 rounded border-2 flex items-center justify-center transition-all flex-shrink-0',
+                            selected.includes(p.id) ? 'bg-indigo-500/20 border-indigo-400' : 'border-border'
+                        )}>
+                            {selected.includes(p.id) && <Check className="w-2 h-2 text-indigo-500" />}
+                        </div>
                         <UserCircle className="w-3.5 h-3.5 text-muted-foreground flex-shrink-0" />
                         <span className="text-foreground flex-1 truncate">{p.name}</span>
-                        {value === p.id && <Check className="w-3 h-3 flex-shrink-0 text-primary" />}
                     </button>
                 ))
             }
@@ -391,30 +389,35 @@ function PropValue({ prop, people, onUpdate }: {
         )
     }
 
-    // ── Person ────────────────────────────────────────────────────────────────
+    // ── Person (multi) ────────────────────────────────────────────────────────
     if (prop.type === 'person') {
-        const sel = people.find(p => p.id === prop.value)
+        const selIds = Array.isArray(prop.value) ? (prop.value as string[]) : (prop.value ? [prop.value as string] : [])
+        const selPeople = people.filter(p => selIds.includes(p.id))
         return (
             <div className="relative" ref={wrapRef}>
                 <button
-                    className="text-xs text-left"
+                    className="flex items-center gap-1 flex-wrap text-left"
                     onMouseDown={e => e.stopPropagation()}
                     onClick={() => setOpen(v => !v)}
                 >
-                    {sel
-                        ? <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[11px] font-medium border border-indigo-200 dark:border-indigo-900/60 bg-indigo-50 dark:bg-indigo-950/40 text-indigo-700 dark:text-indigo-300">
-                            <UserCircle className="w-3 h-3 flex-shrink-0" />
-                            {sel.name}
-                          </span>
-                        : <span className="text-muted-foreground/30">Empty</span>
+                    {selPeople.length > 0
+                        ? selPeople.map(p => (
+                            <span key={p.id} className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[11px] font-medium border border-indigo-200 dark:border-indigo-900/60 bg-indigo-50 dark:bg-indigo-950/40 text-indigo-700 dark:text-indigo-300">
+                                <UserCircle className="w-3 h-3 flex-shrink-0" />
+                                {p.name}
+                            </span>
+                        ))
+                        : <span className="text-xs text-muted-foreground/30">Empty</span>
                     }
                 </button>
                 {open && (
-                    <PersonPopup
+                    <PersonMultiPopup
                         people={people}
-                        value={typeof prop.value === 'string' ? prop.value : null}
-                        onSelect={id => { onUpdate({ value: id }); setOpen(false) }}
-                        onClear={() => { onUpdate({ value: null }); setOpen(false) }}
+                        selected={selIds}
+                        onToggle={id => {
+                            const next = selIds.includes(id) ? selIds.filter(v => v !== id) : [...selIds, id]
+                            onUpdate({ value: next })
+                        }}
                     />
                 )}
             </div>

@@ -1004,7 +1004,7 @@ export function NoteEditor({ note, allTags, onChange, onDelete, people, onCreate
                     {/* Properties */}
                     <NoteProperties
                         properties={note.properties ?? []}
-                        people={people}
+                        people={people.filter(p => !p.noteId || !notes.find(n => n.id === p.noteId)?.trashedAt)}
                         onChange={(props: NoteProperty[]) => onChange(note.id, { properties: props })}
                     />
 

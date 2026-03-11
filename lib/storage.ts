@@ -108,7 +108,7 @@ export function defaultPropertiesForType(typeId: string): NoteProperty[] {
             id: crypto.randomUUID(),
             name,
             type,
-            value: type === 'checkbox' ? false : type === 'multi_select' ? [] : null,
+            value: type === 'checkbox' ? false : (type === 'multi_select' || type === 'person') ? [] : null,
         }
     }
     function mkSelect(name: string, opts: { label: string; color: string }[]): NoteProperty {
