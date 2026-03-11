@@ -41,9 +41,24 @@ export function NoteListPanel({ notes, folders, selectedFolderId, activeTag, act
         return new Date(ts).toLocaleDateString('en', { month: 'short', day: 'numeric' })
     }
 
+    function stripHtml(html: string): string {
+        return html
+            .replace(/<[^>]*>/g, '')
+            .replace(/&amp;/g, '&')
+            .replace(/&lt;/g, '<')
+            .replace(/&gt;/g, '>')
+            .replace(/&nbsp;/g, ' ')
+            .replace(/&#39;/g, "'")
+            .replace(/&quot;/g, '"')
+            .trim()
+    }
+
     function getPreview(note: Note): string {
         for (const block of note.blocks) {
-            if (block.type !== 'divider' && block.content.trim()) return block.content.trim()
+            if (block.type !== 'divider' && block.content.trim()) {
+                const plain = stripHtml(block.content)
+                if (plain) return plain
+            }
         }
         return ''
     }
@@ -105,7 +120,7 @@ export function NoteListPanel({ notes, folders, selectedFolderId, activeTag, act
                                                 <NoteIcon iconName={note.emoji} className="w-4 h-4 leading-none" />
                                             </div>
                                             <span className={cn(
-                                                "text-[13.5px] leading-snug truncate",
+                                                "text-[13.5px] leading-snug break-words min-w-0",
                                                 isActive
                                                     ? "font-bold text-[#111827] dark:text-zinc-100"
                                                     : "font-semibold text-[#374151] dark:text-zinc-300"

@@ -81,6 +81,9 @@ export default function NotesPage() {
   const [graphWidth, setGraphWidth] = useState(320)
   const graphResizingRef = useRef(false)
   const graphResizeStartRef = useRef({ x: 0, w: 320 })
+  const [col2Width, setCol2Width] = useState(280)
+  const col2ResizingRef = useRef(false)
+  const col2ResizeStartRef = useRef({ x: 0, w: 280 })
   const [mounted, setMounted] = useState(false)
   const [people, setPeople] = useState<Person[]>([])
   const [customObjectTypes, setCustomObjectTypes] = useState<ObjectType[]>([])
@@ -114,6 +117,28 @@ export default function NotesPage() {
     function onMouseUp() {
       if (!graphResizingRef.current) return
       graphResizingRef.current = false
+      document.body.style.cursor = ''
+      document.body.style.userSelect = ''
+    }
+    window.addEventListener('mousemove', onMouseMove)
+    window.addEventListener('mouseup', onMouseUp)
+    return () => {
+      window.removeEventListener('mousemove', onMouseMove)
+      window.removeEventListener('mouseup', onMouseUp)
+    }
+  }, [])
+
+  // Col 2 panel resize via drag handle
+  useEffect(() => {
+    function onMouseMove(e: MouseEvent) {
+      if (!col2ResizingRef.current) return
+      const dx = e.clientX - col2ResizeStartRef.current.x
+      const newW = Math.max(200, Math.min(480, col2ResizeStartRef.current.w + dx))
+      setCol2Width(newW)
+    }
+    function onMouseUp() {
+      if (!col2ResizingRef.current) return
+      col2ResizingRef.current = false
       document.body.style.cursor = ''
       document.body.style.userSelect = ''
     }
@@ -461,8 +486,9 @@ export default function NotesPage() {
               />
             </div>
 
-            {/* Col 2: Note List card */}
-            <div className="w-[280px] flex-shrink-0 rounded-2xl overflow-hidden shadow-[0_2px_16px_rgba(0,0,0,0.07)] ring-1 ring-black/[0.05] dark:ring-white/[0.06]">
+            {/* Col 2: Note List card (resizable) */}
+            <div className="flex-shrink-0 rounded-2xl overflow-hidden shadow-[0_2px_16px_rgba(0,0,0,0.07)] ring-1 ring-black/[0.05] dark:ring-white/[0.06]"
+              style={{ width: col2Width, transition: col2ResizingRef.current ? 'none' : 'width 80ms ease' }}>
               <NoteListPanel
                 notes={panelNotes}
                 folders={folders}
@@ -479,6 +505,20 @@ export default function NotesPage() {
                 onRestoreNote={restoreNote}
                 onPermanentDeleteNote={permanentlyDeleteNote}
               />
+            </div>
+
+            {/* Col 2→3 resize handle */}
+            <div
+              className="flex-shrink-0 w-3 flex items-center justify-center cursor-col-resize group z-10 rounded-xl hover:bg-indigo-100/40 dark:hover:bg-zinc-700/30 transition-colors"
+              onMouseDown={e => {
+                e.preventDefault()
+                col2ResizingRef.current = true
+                col2ResizeStartRef.current = { x: e.clientX, w: col2Width }
+                document.body.style.cursor = 'col-resize'
+                document.body.style.userSelect = 'none'
+              }}
+            >
+              <GripVertical className="w-3 h-3 text-stone-300 dark:text-zinc-700 group-hover:text-indigo-400 transition-colors" />
             </div>
           </>
         )}
