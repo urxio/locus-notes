@@ -50,6 +50,14 @@ export function NoteListPanel({ notes, folders, selectedFolderId, activeTag, act
             .replace(/&nbsp;/g, ' ')
             .replace(/&#39;/g, "'")
             .replace(/&quot;/g, '"')
+            // strip markdown syntax
+            .replace(/^#{1,6}\s+/gm, '')
+            .replace(/\*\*(.*?)\*\*/g, '$1')
+            .replace(/\*(.*?)\*/g, '$1')
+            .replace(/`{1,3}(.*?)`{1,3}/g, '$1')
+            .replace(/~~(.*?)~~/g, '$1')
+            .replace(/^[-*+]\s+/gm, '')
+            .replace(/^\d+\.\s+/gm, '')
             .trim()
     }
 
@@ -114,7 +122,7 @@ export function NoteListPanel({ notes, folders, selectedFolderId, activeTag, act
                                     )}
                                 >
                                     <div className="flex items-start justify-between gap-2 mb-1.5">
-                                        <div className="flex items-center gap-2.5 min-w-0">
+                                        <div className="flex items-start gap-2.5 min-w-0">
                                             <div className="w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0"
                                                 style={{ backgroundColor: note.color + '22' }}>
                                                 <NoteIcon iconName={note.emoji} className="w-4 h-4 leading-none" />
