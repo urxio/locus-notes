@@ -53,8 +53,10 @@ export function BlockItem({ block, index, listIndex, numBlocks, isFocused, isSel
     const mentionAnchorRef = useRef<number>(-1)
     const activeEditorRef = useRef<'main' | 'body'>('main')
     const slashAnchorRef = useRef<number>(-1)
-    // Tracks the previous isFocused value so we can detect focus-gain transitions
-    const prevIsFocusedRef = useRef(false)
+    // Always-current mirror of block.content, readable inside effects without
+    // adding block.content to deps (which would reset caret on every keystroke).
+    const blockContentRef = useRef(block.content)
+    blockContentRef.current = block.content
     // Inline date picker: set when user clicks a [data-type="date"] chip
     const [activeDateAnchor, setActiveDateAnchor] = useState<{ rect: DOMRect; dateId: string; date: string } | null>(null)
 
@@ -64,34 +66,38 @@ export function BlockItem({ block, index, listIndex, numBlocks, isFocused, isSel
     const [newTypeEmoji, setNewTypeEmoji] = useState('MapPin')
 
     // Set content imperatively on mount / type change / undo-redo content restore.
-    // Also re-syncs when the block *gains* focus so that inline chips (e.g. note-mention
-    // spans with contenteditable="false") are correctly rendered in edit mode instead of
-    // showing as raw HTML after returning to a block via keyboard navigation.
     useEffect(() => {
         const el = ref.current
         if (!el) return
-        const justGainedFocus = isFocused && !prevIsFocusedRef.current
-        prevIsFocusedRef.current = isFocused
-        if (document.activeElement !== el || justGainedFocus) {
+        if (document.activeElement !== el) {
             el.innerHTML = block.content
         }
-    }, [block.type, block.content, isFocused])
+    }, [block.type, block.content])
 
     // Focus imperatively (cursor at start).
     // Depends on both isFocused AND block.type: when a slash-command changes the
     // type (e.g. p → bullet/todo) React unmounts the old contenteditable and
     // mounts a new one inside the wrapper div, losing focus. Adding block.type
     // here ensures we re-fire and restore focus after any type change.
+    //
+    // We also re-inject innerHTML here so that contenteditable="false" chip spans
+    // (note-mention, date) always render correctly when the block gains focus,
+    // instead of showing as raw HTML text after keyboard navigation.
+    // blockContentRef holds the latest block.content without adding it to deps
+    // (which would reset the caret on every keystroke).
     useEffect(() => {
         if (!isFocused || !ref.current) return
-        // ref.current is null for date/divider (no contenteditable) — skip safely
-        if (document.activeElement !== ref.current) {
-            ref.current.focus()
+        const el = ref.current
+        // Re-sync HTML from state whenever focus is gained / block type changes.
+        // This is the fix for chips showing as raw HTML on re-entry.
+        el.innerHTML = blockContentRef.current
+        if (document.activeElement !== el) {
+            el.focus()
         }
         try {
             const range = document.createRange()
             const sel = window.getSelection()
-            const firstChild = ref.current.firstChild
+            const firstChild = el.firstChild
             if (firstChild) {
                 if (firstChild.nodeType === Node.TEXT_NODE) {
                     // Normal text node — place caret at offset 0
@@ -102,7 +108,7 @@ export function BlockItem({ block, index, listIndex, numBlocks, isFocused, isSel
                     range.setStartBefore(firstChild)
                 }
             } else {
-                range.setStart(ref.current, 0)
+                range.setStart(el, 0)
             }
             range.collapse(true)
             sel?.removeAllRanges()
@@ -510,11 +516,31 @@ export function BlockItem({ block, index, listIndex, numBlocks, isFocused, isSel
         deleteRange.setEnd(endNode, endOff)
         deleteRange.deleteContents()
 
-        // Build the note-mention chip span
+        // Build the note-mention chip span.
+        // Inline styles guarantee the chip looks correct in the contenteditable
+        // edit-mode context where CSS classes on contenteditable="false" children
+        // can fail to apply in some browsers (same pattern as createInlineDateHtml).
+        // The .note-mention-chip CSS class still provides hover effects & the
+        // ::before page-icon in view mode.
         const span = document.createElement('span')
         span.setAttribute('data-note-mention', targetNote.id)
         span.setAttribute('contenteditable', 'false')
         span.className = 'note-mention-chip'
+        span.style.cssText = [
+            'display:inline',
+            'padding:2px 8px 2px 6px',
+            'border-radius:5px',
+            'font-size:0.84em',
+            'font-weight:600',
+            'cursor:pointer',
+            'user-select:none',
+            'vertical-align:baseline',
+            'line-height:inherit',
+            'background:rgba(124,58,237,0.13)',
+            'color:rgb(91,33,182)',
+            'border:1.5px solid rgba(124,58,237,0.45)',
+            'transition:background 0.15s,border-color 0.15s',
+        ].join(';')
         span.textContent = targetNote.title || 'Untitled'
 
         // Insert: trailing space first (insertNode prepends), then the span

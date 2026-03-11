@@ -120,13 +120,14 @@
   border-color: rgba(139, 92, 246, 0.55);
   box-shadow: 0 1px 3px rgba(139, 92, 246, 0.18);
 }
+/* !important overrides the inline-style background/border added by insertNoteMention */
 .note-mention-chip:hover {
-  background: rgba(124, 58, 237, 0.22);
-  border-color: rgba(124, 58, 237, 0.65);
+  background: rgba(124, 58, 237, 0.22) !important;
+  border-color: rgba(124, 58, 237, 0.65) !important;
   box-shadow: 0 2px 6px rgba(124, 58, 237, 0.18);
 }
 .dark .note-mention-chip:hover {
-  background: rgba(139, 92, 246, 0.32);
-  border-color: rgba(139, 92, 246, 0.7);
+  background: rgba(139, 92, 246, 0.32) !important;
+  border-color: rgba(139, 92, 246, 0.7) !important;
   box-shadow: 0 2px 6px rgba(139, 92, 246, 0.28);
 }
