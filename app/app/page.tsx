@@ -524,7 +524,7 @@ export default function NotesPage() {
         )}
 
         {/* Col 3: Editor card + optional Graph card */}
-        <div className="flex-1 min-w-0 flex gap-1 overflow-hidden relative">
+        <div className="flex-1 min-w-0 flex gap-3 overflow-hidden relative">
           <div className="flex-1 overflow-hidden rounded-2xl shadow-[0_2px_16px_rgba(0,0,0,0.07)] ring-1 ring-black/[0.05] dark:ring-white/[0.06] bg-white dark:bg-zinc-950">
             {activeNote ? (
               <NoteEditor
@@ -572,7 +572,7 @@ export default function NotesPage() {
           {graphOpen && (
             <>
               <div
-                className="flex-shrink-0 w-3 flex items-center justify-center cursor-col-resize group z-10 rounded-xl hover:bg-indigo-100/40 dark:hover:bg-zinc-700/30 transition-colors"
+                className="flex-shrink-0 w-1 -mx-2 flex items-center justify-center cursor-col-resize group z-10 rounded-xl hover:bg-indigo-100/40 dark:hover:bg-zinc-700/30 transition-colors"
                 onMouseDown={e => {
                   e.preventDefault()
                   graphResizingRef.current = true
