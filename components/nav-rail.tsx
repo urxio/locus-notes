@@ -1,4 +1,4 @@
-import React, { useState } from "react"
+import React, { useState, useEffect } from "react"
 import { createPortal } from "react-dom"
 import { Plus, PanelLeftClose, FileText, FolderPlus, Pencil, Trash2, X, Hash, Network, ChevronRight, RotateCcw } from "lucide-react"
 import { useTheme } from "next-themes"
@@ -44,7 +44,20 @@ export function NavRail({ folders, selectedFolderId, onSelectFolder, people, obj
     const [editingName, setEditingName] = useState('')
     const [creatingType, setCreatingType] = useState<string | null>(null)
     const [creatingName, setCreatingName] = useState('')
-    const [collapsedTypes, setCollapsedTypes] = useState<Set<string>>(new Set())
+    const [collapsedTypes, setCollapsedTypes] = useState<Set<string>>(() => {
+        if (typeof window === 'undefined') return new Set()
+        try {
+            const raw = localStorage.getItem('locus-collapsed-types-v1')
+            if (raw) return new Set(JSON.parse(raw) as string[])
+        } catch {}
+        return new Set()
+    })
+
+    useEffect(() => {
+        try {
+            localStorage.setItem('locus-collapsed-types-v1', JSON.stringify([...collapsedTypes]))
+        } catch {}
+    }, [collapsedTypes])
     const [ctxMenu, setCtxMenu] = useState<{ x: number; y: number; type: 'person' | 'folder' | 'objectType'; id: string } | null>(null)
     const allTypes = [...BUILTIN_OBJECT_TYPES, ...objectTypes].filter(t => !deletedObjectTypes.includes(t.id))
     const visibleTypes = allTypes.filter(t => t.isBuiltin || people.some(p => (p.typeId ?? 'person') === t.id))

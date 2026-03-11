@@ -227,7 +227,7 @@ function PersonPopup({ people, value, onSelect, onClear }: {
                         className="w-full flex items-center gap-2 px-3 py-1.5 text-xs hover:bg-accent transition-colors text-left"
                         onMouseDown={e => e.preventDefault()} onClick={() => onSelect(p.id)}
                     >
-                        <span className="text-sm leading-none">{p.emoji || '👤'}</span>
+                        <UserCircle className="w-3.5 h-3.5 text-muted-foreground flex-shrink-0" />
                         <span className="text-foreground flex-1 truncate">{p.name}</span>
                         {value === p.id && <Check className="w-3 h-3 flex-shrink-0 text-primary" />}
                     </button>
@@ -402,7 +402,10 @@ function PropValue({ prop, people, onUpdate }: {
                     onClick={() => setOpen(v => !v)}
                 >
                     {sel
-                        ? <span className="flex items-center gap-1.5 text-foreground"><span className="text-sm leading-none">{sel.emoji || '👤'}</span>{sel.name}</span>
+                        ? <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[11px] font-medium border border-indigo-200 dark:border-indigo-900/60 bg-indigo-50 dark:bg-indigo-950/40 text-indigo-700 dark:text-indigo-300">
+                            <UserCircle className="w-3 h-3 flex-shrink-0" />
+                            {sel.name}
+                          </span>
                         : <span className="text-muted-foreground/30">Empty</span>
                     }
                 </button>
