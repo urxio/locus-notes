@@ -94,11 +94,11 @@
 /* ── App shell gradient (light) + pure black (dark) ────────────────────────── */
 .app-shell {
   background:
-    radial-gradient(ellipse 75% 65% at 12% 14%, rgba(165, 180, 252, 0.50) 0%, transparent 55%),
-    radial-gradient(ellipse 70% 65% at 88% 88%, rgba(196, 181, 253, 0.45) 0%, transparent 55%),
-    radial-gradient(ellipse 55% 50% at 78% 12%, rgba(147, 197, 253, 0.40) 0%, transparent 50%),
-    radial-gradient(ellipse 48% 45% at 22% 82%, rgba(167, 243, 208, 0.18) 0%, transparent 50%),
-    linear-gradient(145deg, #eef2ff 0%, #f5f3ff 50%, #eff6ff 100%);
+    radial-gradient(ellipse 80% 65% at  8% 10%, rgba(99,  102, 241, 0.38) 0%, transparent 52%),
+    radial-gradient(ellipse 75% 65% at 92% 90%, rgba(139,  92, 246, 0.32) 0%, transparent 52%),
+    radial-gradient(ellipse 60% 52% at 82%  8%, rgba( 59, 130, 246, 0.28) 0%, transparent 46%),
+    radial-gradient(ellipse 50% 44% at 20% 88%, rgba( 20, 184, 166, 0.16) 0%, transparent 46%),
+    #eef0ff;
 }
 
 .dark .app-shell {

@@ -56,7 +56,15 @@ function formatDate(ts: number): string {
 
 // ─── Main Page ────────────────────────────────────────────────────────────────
 
+const LIGHT_BG =
+  'radial-gradient(ellipse 80% 65% at  8% 10%, rgba(99,102,241,0.38) 0%, transparent 52%),' +
+  'radial-gradient(ellipse 75% 65% at 92% 90%, rgba(139,92,246,0.32) 0%, transparent 52%),' +
+  'radial-gradient(ellipse 60% 52% at 82%  8%, rgba(59,130,246,0.28) 0%, transparent 46%),' +
+  'radial-gradient(ellipse 50% 44% at 20% 88%, rgba(20,184,166,0.16) 0%, transparent 46%),' +
+  '#eef0ff'
+
 export default function NotesPage() {
+  const { resolvedTheme } = useTheme()
   const [notes, setNotes] = useState<Note[]>([])
   const [activeId, setActiveId] = useState<string | null>(null)
   const [search, setSearch] = useState('')
@@ -373,7 +381,8 @@ export default function NotesPage() {
 
   return (
     <TooltipProvider delayDuration={400}>
-      <div className="app-shell flex h-screen overflow-hidden p-3 gap-3">
+      <div className="flex h-screen overflow-hidden p-3 gap-3"
+        style={{ background: mounted && resolvedTheme === 'dark' ? '#000000' : LIGHT_BG }}>
 
         {sidebarOpen && (
           <>

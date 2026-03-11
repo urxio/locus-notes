@@ -1,6 +1,7 @@
 import React, { useState } from "react"
 import { createPortal } from "react-dom"
 import { Plus, PanelLeftClose, FileText, FolderPlus, Pencil, Trash2, X, Hash, Network } from "lucide-react"
+import { useTheme } from "next-themes"
 import { cn } from "@/lib/utils"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { ThemeSwitcher } from "@/components/theme-switcher"
@@ -34,6 +35,8 @@ interface NavRailProps {
 }
 
 export function NavRail({ folders, selectedFolderId, onSelectFolder, people, objectTypes, deletedObjectTypes, onPromptDeleteObjectType, onDeletePerson, onCreatePerson, onCreateFolder, onDeleteFolder, onRenameFolder, onCreate, activeId, onSelect, allTags, activeTag, onTagFilter, graphOpen, onToggleGraph, notes, onToggleSidebar }: NavRailProps) {
+    const { resolvedTheme } = useTheme()
+    const dark = resolvedTheme === 'dark'
     const [editingFolderId, setEditingFolderId] = useState<string | null>(null)
     const [editingName, setEditingName] = useState('')
     const [creatingType, setCreatingType] = useState<string | null>(null)
@@ -43,7 +46,13 @@ export function NavRail({ folders, selectedFolderId, onSelectFolder, people, obj
     const visibleTypes = allTypes.filter(t => t.isBuiltin || people.some(p => (p.typeId ?? 'person') === t.id))
 
     return (
-        <div className="flex flex-col h-full bg-white/55 backdrop-blur-2xl dark:bg-zinc-950/75 dark:backdrop-blur-2xl">
+        <div className="flex flex-col h-full"
+            style={{
+                backdropFilter: 'blur(40px)',
+                WebkitBackdropFilter: 'blur(40px)',
+                background: dark ? 'rgba(5,5,8,0.78)' : 'rgba(255,255,255,0.42)',
+            }}
+        >
             {/* Identity header */}
             <div className="px-5 pt-5 pb-4">
                 <div className="flex items-center justify-between">
