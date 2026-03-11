@@ -105,29 +105,6 @@ export function NavRail({ folders, selectedFolderId, onSelectFolder, people, obj
                         <span className="text-[10px] font-mono text-[#d1d5db] dark:text-zinc-700 tabular-nums">{notes.length}</span>
                     </button>
 
-                    {/* Trash */}
-                    <button
-                        onClick={onSelectTrash}
-                        className={cn(
-                            "w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-[13px] transition-all text-left",
-                            trashView
-                                ? "bg-red-50 dark:bg-zinc-800 text-red-600 dark:text-red-400 font-semibold"
-                                : "text-[#374151] dark:text-zinc-400 font-medium hover:bg-slate-50 dark:hover:bg-zinc-800/50 hover:text-[#1a1a2e] dark:hover:text-zinc-200"
-                        )}
-                    >
-                        <div className={cn("w-6 h-6 rounded-lg flex items-center justify-center flex-shrink-0 transition-colors",
-                            trashView ? "bg-red-100 dark:bg-red-950/50" : "bg-slate-100 dark:bg-zinc-700/60"
-                        )}>
-                            <Trash2 className={cn("w-3.5 h-3.5 transition-colors",
-                                trashView ? "text-red-500 dark:text-red-400" : "text-[#9ca3af] dark:text-zinc-500"
-                            )} />
-                        </div>
-                        <span className="flex-1 text-[13px]">Trash</span>
-                        {trashCount > 0 && (
-                            <span className="text-[10px] font-mono text-[#d1d5db] dark:text-zinc-700 tabular-nums">{trashCount}</span>
-                        )}
-                    </button>
-
                     {/* Folders */}
                     <div className="pt-4">
                         <div className="flex items-center justify-between px-1 mb-2">
@@ -213,7 +190,9 @@ export function NavRail({ folders, selectedFolderId, onSelectFolder, people, obj
                             </div>
                             <div className="space-y-2">
                                 {visibleTypes.map(objType => {
-                                    const typeObjects = people.filter(p => (p.typeId ?? 'person') === objType.id)
+                                    const typeObjects = people
+                                    .filter(p => (p.typeId ?? 'person') === objType.id)
+                                    .filter(p => !p.noteId || notes.some(n => n.id === p.noteId && !n.trashedAt))
                                     return (
                                         <div key={objType.id}>
                                             {/* Type header — click to collapse/expand, right-click for context menu */}
@@ -328,6 +307,31 @@ export function NavRail({ folders, selectedFolderId, onSelectFolder, people, obj
                 </div>
             </ScrollArea>
 
+            {/* Trash — pinned above footer */}
+            <div className="px-3 py-2 border-t border-white/40 dark:border-white/[0.06]">
+                <button
+                    onClick={onSelectTrash}
+                    className={cn(
+                        "w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-[13px] transition-all text-left",
+                        trashView
+                            ? "bg-red-50 dark:bg-zinc-800 text-red-600 dark:text-red-400 font-semibold"
+                            : "text-[#374151] dark:text-zinc-400 font-medium hover:bg-slate-50 dark:hover:bg-zinc-800/50 hover:text-[#1a1a2e] dark:hover:text-zinc-200"
+                    )}
+                >
+                    <div className={cn("w-6 h-6 rounded-lg flex items-center justify-center flex-shrink-0 transition-colors",
+                        trashView ? "bg-red-100 dark:bg-red-950/50" : "bg-slate-100 dark:bg-zinc-700/60"
+                    )}>
+                        <Trash2 className={cn("w-3.5 h-3.5 transition-colors",
+                            trashView ? "text-red-500 dark:text-red-400" : "text-[#9ca3af] dark:text-zinc-500"
+                        )} />
+                    </div>
+                    <span className="flex-1 text-[13px]">Trash</span>
+                    {trashCount > 0 && (
+                        <span className="text-[10px] font-mono text-[#d1d5db] dark:text-zinc-700 tabular-nums">{trashCount}</span>
+                    )}
+                </button>
+            </div>
+
             {/* Context menu */}
             {ctxMenu && createPortal(
                 <>
@@ -335,7 +339,7 @@ export function NavRail({ folders, selectedFolderId, onSelectFolder, people, obj
                     <div className="fixed z-50 bg-white dark:bg-zinc-900 rounded-xl shadow-xl border border-[#e5e7eb] dark:border-zinc-800 py-1 min-w-[160px]" style={{ left: ctxMenu.x, top: ctxMenu.y }}>
                         {ctxMenu.type === 'person' && (
                             <button onClick={() => { onDeletePerson(ctxMenu.id); setCtxMenu(null) }} className="w-full text-left px-3 py-1.5 text-[12px] hover:bg-slate-50 dark:hover:bg-zinc-800 flex items-center gap-2 text-red-500 transition-colors">
-                                <Trash2 className="w-3.5 h-3.5 flex-shrink-0" /> Delete object
+                                <Trash2 className="w-3.5 h-3.5 flex-shrink-0" /> Move to trash
                             </button>
                         )}
                         {ctxMenu.type === 'folder' && (

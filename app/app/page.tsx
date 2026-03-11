@@ -153,12 +153,17 @@ export default function NotesPage() {
   function deletePerson(personId: string) {
     const person = people.find(p => p.id === personId)
     if (person?.noteId) {
-      // Compute new notes outside the updater to avoid calling setActiveId during render
-      const updatedNotes = notes.filter(n => n.id !== person.noteId)
-      setNotes(updatedNotes)
-      if (activeId === person.noteId) { setActiveId(updatedNotes[0]?.id ?? null); setNavStack([]) }
+      // Soft-delete: move the person's note to trash so it can be recovered
+      setNotes(prev => prev.map(n => n.id === person.noteId ? { ...n, trashedAt: Date.now() } : n))
+      if (activeId === person.noteId) {
+        const nextNote = notes.find(n => n.id !== person.noteId && !n.trashedAt)
+        setActiveId(nextNote?.id ?? null)
+        setNavStack([])
+      }
+    } else {
+      // No linked note — just remove the person record directly
+      setPeople(prev => prev.filter(p => p.id !== personId))
     }
-    setPeople(prev => prev.filter(p => p.id !== personId))
   }
 
   function createObjectType(name: string, emoji: string): ObjectType {
