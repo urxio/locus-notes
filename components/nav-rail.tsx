@@ -51,20 +51,28 @@ export function NavRail({ folders, selectedFolderId, onSelectFolder, people, obj
     const [editingName, setEditingName] = useState('')
     const [creatingType, setCreatingType] = useState<string | null>(null)
     const [creatingName, setCreatingName] = useState('')
-    const [collapsedTypes, setCollapsedTypes] = useState<Set<string>>(() => {
+    // Track explicitly EXPANDED types. Empty set = all collapsed = correct default for new users.
+    const [expandedTypes, setExpandedTypes] = useState<Set<string>>(() => {
         if (typeof window === 'undefined') return new Set()
         try {
-            const raw = localStorage.getItem('locus-collapsed-types-v1')
+            const raw = localStorage.getItem('locus-expanded-types-v1')
             if (raw) return new Set(JSON.parse(raw) as string[])
         } catch {}
-        return new Set()
+        return new Set()  // default: all collapsed ✓
     })
 
-    useEffect(() => {
-        try {
-            localStorage.setItem('locus-collapsed-types-v1', JSON.stringify([...collapsedTypes]))
-        } catch {}
-    }, [collapsedTypes])
+    // Save synchronously inside the setter so localStorage is always in sync,
+    // even if the component remounts before an async effect would have run.
+    const toggleTypeExpanded = (typeId: string) => {
+        setExpandedTypes(prev => {
+            const next = new Set(prev)
+            next.has(typeId) ? next.delete(typeId) : next.add(typeId)
+            try {
+                localStorage.setItem('locus-expanded-types-v1', JSON.stringify([...next]))
+            } catch {}
+            return next
+        })
+    }
     const [ctxMenu, setCtxMenu] = useState<{ x: number; y: number; type: 'person' | 'folder' | 'objectType'; id: string } | null>(null)
     const allTypes = [...BUILTIN_OBJECT_TYPES, ...objectTypes].filter(t => !deletedObjectTypes.includes(t.id))
     const visibleTypes = allTypes.filter(t => t.isBuiltin || people.some(p => (p.typeId ?? 'person') === t.id))
@@ -259,27 +267,23 @@ export function NavRail({ folders, selectedFolderId, onSelectFolder, people, obj
                                                     <span className={cn("font-mono font-semibold text-[9px] uppercase tracking-[0.12em] flex-1 truncate",
                                                         selectedObjectTypeId === objType.id ? "text-white" : "text-[#374151] dark:text-zinc-300"
                                                     )}>{objType.name}</span>
-                                                    {collapsedTypes.has(objType.id) && typeObjects.length > 0 && (
+                                                    {!expandedTypes.has(objType.id) && typeObjects.length > 0 && (
                                                         <span className={cn("font-mono text-[9px] tabular-nums", selectedObjectTypeId === objType.id ? "text-indigo-200" : "text-[#d1d5db] dark:text-zinc-600")}>{typeObjects.length}</span>
                                                     )}
                                                 </button>
                                                 {/* Chevron — toggles collapse only */}
                                                 <button
                                                     className={cn("flex-shrink-0 p-0.5 rounded transition-colors", selectedObjectTypeId === objType.id ? "hover:bg-indigo-700" : "hover:bg-slate-200 dark:hover:bg-zinc-700")}
-                                                    onClick={() => setCollapsedTypes(prev => {
-                                                        const next = new Set(prev)
-                                                        next.has(objType.id) ? next.delete(objType.id) : next.add(objType.id)
-                                                        return next
-                                                    })}
+                                                    onClick={() => toggleTypeExpanded(objType.id)}
                                                 >
                                                     <ChevronRight className={cn(
                                                         "w-3 h-3 transition-transform duration-150",
                                                         selectedObjectTypeId === objType.id ? "text-indigo-200" : "text-[#d1d5db] dark:text-zinc-600",
-                                                        !collapsedTypes.has(objType.id) && "rotate-90"
+                                                        expandedTypes.has(objType.id) && "rotate-90"
                                                     )} />
                                                 </button>
                                             </div>
-                                            {!collapsedTypes.has(objType.id) && (
+                                            {expandedTypes.has(objType.id) && (
                                             <div className="space-y-0.5">
                                                 {typeObjects.map(person => (
                                                     <div key={person.id} className="group/person flex items-center">
