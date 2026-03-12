@@ -514,7 +514,7 @@ export default function NotesPage() {
                 if (boardType) {
                   const boardObjects = people
                     .filter(p => (p.typeId ?? 'person') === boardType.id)
-                    .filter(p => !p.noteId || liveNotes.some(n => n.id === p.noteId))
+                    .filter(p => p.noteId && liveNotes.some(n => n.id === p.noteId))
                   return (
                     <ObjectBoardPanel
                       key={boardType.id}

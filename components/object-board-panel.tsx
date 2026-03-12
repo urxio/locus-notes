@@ -15,7 +15,7 @@ interface ObjectBoardPanelProps {
     people: Person[]
     activeId: string | null
     onSelectObject: (noteId: string) => void
-    onCreateObject: (name: string, typeId: string) => void
+    onCreateObject: (name: string, typeId: string) => Person
 }
 
 function chipStyle(color: string) {
@@ -173,9 +173,11 @@ export function ObjectBoardPanel({
         e.preventDefault()
         const name = newName.trim()
         if (!name) return
-        onCreateObject(name, objectType.id)
+        const created = onCreateObject(name, objectType.id)
         setNewName('')
         setCreating(false)
+        // Auto-navigate to the newly created object's note
+        if (created.noteId) onSelectObject(created.noteId)
     }
 
     return (
