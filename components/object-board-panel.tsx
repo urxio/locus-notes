@@ -42,27 +42,31 @@ function PropValue({ prop, people }: { prop: NoteProperty; people: Person[] }) {
     switch (prop.type) {
         case 'select': {
             if (!prop.value) return null
-            const opt = prop.options?.find(o => o.label === prop.value)
+            // value is stored as option id (UUID) — look up by id, fall back to label match for legacy data
+            const opt = prop.options?.find(o => o.id === prop.value) ?? prop.options?.find(o => o.label === prop.value)
             const color = opt?.color || '#6366f1'
+            const label = opt?.label ?? String(prop.value)
             return (
                 <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-medium border"
                     style={chipStyle(color)}>
-                    {String(prop.value)}
+                    {label}
                 </span>
             )
         }
         case 'multi_select': {
+            // values are stored as option ids (UUIDs)
             const vals = Array.isArray(prop.value) ? (prop.value as string[]) : []
             if (!vals.length) return null
             return (
                 <div className="flex items-center gap-1 flex-wrap">
                     {vals.slice(0, 3).map(v => {
-                        const opt = prop.options?.find(o => o.label === v)
+                        const opt = prop.options?.find(o => o.id === v) ?? prop.options?.find(o => o.label === v)
                         const color = opt?.color || '#6366f1'
+                        const label = opt?.label ?? v
                         return (
                             <span key={v} className="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-medium border"
                                 style={chipStyle(color)}>
-                                {v}
+                                {label}
                             </span>
                         )
                     })}
