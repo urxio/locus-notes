@@ -215,7 +215,7 @@ export function NavRail({ folders, selectedFolderId, onSelectFolder, people, obj
                                                 className={cn(
                                                     "w-full flex items-center gap-1.5 px-1.5 py-1 mb-1 rounded-md border transition-colors",
                                                     selectedObjectTypeId === objType.id
-                                                        ? "bg-indigo-50 dark:bg-indigo-950/40 border-indigo-200 dark:border-indigo-900/60"
+                                                        ? "bg-indigo-600 dark:bg-indigo-600 border-indigo-600 dark:border-indigo-600"
                                                         : "bg-slate-50 dark:bg-zinc-800/50 border-slate-100 dark:border-zinc-700/50"
                                                 )}
                                                 onContextMenu={e => { e.preventDefault(); e.stopPropagation(); setCtxMenu({ x: e.clientX, y: e.clientY, type: 'objectType', id: objType.id }) }}
@@ -225,17 +225,17 @@ export function NavRail({ folders, selectedFolderId, onSelectFolder, people, obj
                                                     className="flex items-center gap-1.5 flex-1 min-w-0 text-left hover:opacity-80 transition-opacity"
                                                     onClick={() => onSelectObjectType?.(objType.id)}
                                                 >
-                                                    <NoteIcon iconName={objType.emoji} className={cn("w-3.5 h-3.5 flex-shrink-0", selectedObjectTypeId === objType.id ? "text-indigo-600 dark:text-indigo-400" : "text-[#6b7280]")} />
+                                                    <NoteIcon iconName={objType.emoji} className={cn("w-3.5 h-3.5 flex-shrink-0", selectedObjectTypeId === objType.id ? "text-white" : "text-[#6b7280]")} />
                                                     <span className={cn("font-mono font-semibold text-[9px] uppercase tracking-[0.12em] flex-1 truncate",
-                                                        selectedObjectTypeId === objType.id ? "text-indigo-700 dark:text-indigo-300" : "text-[#374151] dark:text-zinc-300"
+                                                        selectedObjectTypeId === objType.id ? "text-white" : "text-[#374151] dark:text-zinc-300"
                                                     )}>{objType.name}</span>
                                                     {collapsedTypes.has(objType.id) && typeObjects.length > 0 && (
-                                                        <span className="font-mono text-[9px] text-[#d1d5db] dark:text-zinc-600 tabular-nums">{typeObjects.length}</span>
+                                                        <span className={cn("font-mono text-[9px] tabular-nums", selectedObjectTypeId === objType.id ? "text-indigo-200" : "text-[#d1d5db] dark:text-zinc-600")}>{typeObjects.length}</span>
                                                     )}
                                                 </button>
                                                 {/* Chevron — toggles collapse only */}
                                                 <button
-                                                    className="flex-shrink-0 p-0.5 hover:bg-slate-200 dark:hover:bg-zinc-700 rounded transition-colors"
+                                                    className={cn("flex-shrink-0 p-0.5 rounded transition-colors", selectedObjectTypeId === objType.id ? "hover:bg-indigo-700" : "hover:bg-slate-200 dark:hover:bg-zinc-700")}
                                                     onClick={() => setCollapsedTypes(prev => {
                                                         const next = new Set(prev)
                                                         next.has(objType.id) ? next.delete(objType.id) : next.add(objType.id)
@@ -243,7 +243,8 @@ export function NavRail({ folders, selectedFolderId, onSelectFolder, people, obj
                                                     })}
                                                 >
                                                     <ChevronRight className={cn(
-                                                        "w-3 h-3 text-[#d1d5db] dark:text-zinc-600 transition-transform duration-150",
+                                                        "w-3 h-3 transition-transform duration-150",
+                                                        selectedObjectTypeId === objType.id ? "text-indigo-200" : "text-[#d1d5db] dark:text-zinc-600",
                                                         !collapsedTypes.has(objType.id) && "rotate-90"
                                                     )} />
                                                 </button>
@@ -261,13 +262,13 @@ export function NavRail({ folders, selectedFolderId, onSelectFolder, people, obj
                                                             }}
                                                             onContextMenu={e => { e.preventDefault(); e.stopPropagation(); setCtxMenu({ x: e.clientX, y: e.clientY, type: 'person', id: person.id }) }}
                                                             className={cn(
-                                                                "flex-1 min-w-0 flex items-center gap-2.5 px-3 py-2 rounded-xl text-[13px] transition-all text-left",
+                                                                "flex-1 min-w-0 flex items-center gap-2 px-2.5 py-1 rounded-lg text-[12px] transition-all text-left",
                                                                 person.noteId && activeId === person.noteId
                                                                     ? "bg-indigo-50 dark:bg-zinc-800 text-indigo-700 dark:text-zinc-100 font-semibold"
                                                                     : "text-[#374151] dark:text-zinc-400 font-medium hover:bg-slate-50 dark:hover:bg-zinc-800/50 hover:text-[#1a1a2e]"
                                                             )}
                                                         >
-                                                            <NoteIcon iconName={person.emoji} className="w-3 h-3 flex-shrink-0 opacity-70" />
+                                                            <NoteIcon iconName={person.emoji} className="w-2.5 h-2.5 flex-shrink-0 opacity-70" />
                                                             <span className="truncate">{person.name}</span>
                                                         </button>
                                                         <button onClick={() => onDeletePerson(person.id)}
