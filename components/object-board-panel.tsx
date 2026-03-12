@@ -128,39 +128,51 @@ export function ObjectBoardPanel({
         return defaultPropertiesForType(objectType.id).map(p => p.name)
     }, [objectType.id])
 
-    // Persisted visible prop names per type — default: all visible
-    // Always filter against allPropNames to strip any stale cross-type names from localStorage
+    // Persisted visible prop names per type — default: all visible on first visit
     const [visiblePropNames, setVisiblePropNames] = useState<string[]>(() => {
         const canonical = defaultPropertiesForType(objectType.id).map(p => p.name)
         if (typeof window === 'undefined') return canonical
         try {
             const raw = localStorage.getItem(`locus-board-visible-${objectType.id}`)
-            if (raw) {
+            if (raw !== null) {
+                // Key exists — respect the saved list even if the user hid everything (empty array)
                 const saved = JSON.parse(raw) as string[]
-                const filtered = saved.filter(n => canonical.includes(n))
-                return filtered.length > 0 ? filtered : canonical
+                return saved.filter(n => canonical.includes(n))
             }
         } catch {}
-        return canonical
+        return canonical  // first visit, no prefs stored → show everything
     })
 
-    // On mount: sanitize in-memory state against canonical, then persist.
-    // Runs atomically (single setVisiblePropNames) so the persist effect below
-    // always sees the corrected value — no race with stale data.
+    // Re-sync when the object type changes (component may stay mounted across type switches)
     useEffect(() => {
         const canonical = defaultPropertiesForType(objectType.id).map(p => p.name)
-        setVisiblePropNames(prev => {
-            const filtered = prev.filter(n => canonical.includes(n))
-            const correct = filtered.length > 0 ? filtered : canonical
-            try { localStorage.setItem(`locus-board-visible-${objectType.id}`, JSON.stringify(correct)) } catch {}
-            return correct
-        })
+        try {
+            const raw = localStorage.getItem(`locus-board-visible-${objectType.id}`)
+            if (raw !== null) {
+                const saved = JSON.parse(raw) as string[]
+                setVisiblePropNames(saved.filter(n => canonical.includes(n)))
+            } else {
+                setVisiblePropNames(canonical)
+            }
+        } catch {
+            setVisiblePropNames(canonical)
+        }
     }, [objectType.id])
 
-    // Persist whenever the user toggles a prop (after state is already canonical-clean)
-    useEffect(() => {
-        try { localStorage.setItem(`locus-board-visible-${objectType.id}`, JSON.stringify(visiblePropNames)) } catch {}
-    }, [visiblePropNames, objectType.id])
+    // Toggle a prop — saves synchronously so localStorage is always current,
+    // even if the component remounts before an async effect would have fired.
+    const togglePropVisible = (name: string) => {
+        setVisiblePropNames(prev => {
+            const clean = prev.filter(n => allPropNames.includes(n))
+            const next = clean.includes(name)
+                ? clean.filter(n => n !== name)
+                : [...clean, name]
+            try {
+                localStorage.setItem(`locus-board-visible-${objectType.id}`, JSON.stringify(next))
+            } catch {}
+            return next
+        })
+    }
 
     // Close settings on outside click
     useEffect(() => {
@@ -219,13 +231,7 @@ export function ObjectBoardPanel({
                                         return (
                                             <button key={name}
                                                 className="w-full flex items-center gap-2.5 px-3 py-1.5 hover:bg-[#f9fafb] dark:hover:bg-zinc-800 transition-colors text-left"
-                                                onClick={() => setVisiblePropNames(prev => {
-                                                    // Always sanitize against canonical before toggling
-                                                    const clean = prev.filter(n => allPropNames.includes(n))
-                                                    return clean.includes(name)
-                                                        ? clean.filter(n => n !== name)
-                                                        : [...clean, name]
-                                                })}>
+                                                onClick={() => togglePropVisible(name)}>
                                                 <div className={cn(
                                                     "w-3.5 h-3.5 rounded border-2 flex items-center justify-center flex-shrink-0 transition-all",
                                                     visible ? "bg-indigo-500/20 border-indigo-400" : "border-[#d1d5db] dark:border-zinc-600"
