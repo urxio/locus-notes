@@ -11,7 +11,7 @@ export function GraphPanel({ notes, people, activeNoteId, onSelectNote, isExpand
     isExpanded: boolean; onToggleExpand: () => void
 }) {
     const { resolvedTheme } = useTheme()
-    const dark = resolvedTheme === 'dark'
+    const dark = resolvedTheme !== 'light'
 
     // Theme-aware color tokens
     const T = dark ? {

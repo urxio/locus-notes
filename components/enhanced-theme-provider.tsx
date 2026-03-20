@@ -1,42 +1,53 @@
 "use client"
 
-import { ThemeProvider as NextThemesProvider, useTheme } from "next-themes"
+import { ThemeProvider as NextThemesProvider } from "next-themes"
 import type { ThemeProviderProps } from "next-themes"
 import { useEffect, useState } from "react"
 
 /**
- * Syncs the .dark class and body helper class whenever the theme changes.
- * Must live *inside* NextThemesProvider so it can call useTheme().
- *
- * "terminal" is a dark-based theme — we co-apply .dark so that Tailwind
- * `dark:` utility classes continue to work, then let the .terminal CSS
- * variables override the palette on top.
+ * Watches the <html> class attribute with a MutationObserver.
+ * When "terminal" is set by next-themes, co-applies ".dark" so Tailwind
+ * `dark:` utility classes continue to work (terminal is a dark-based theme).
+ * When switching away to "light", removes the manually-added ".dark".
+ * The observer fires AFTER next-themes has already committed its class change,
+ * avoiding the child-effect-before-parent-effect race.
  */
-function DarkClassSync() {
-  const { theme } = useTheme()
-
+function useDarkClassSync() {
   useEffect(() => {
     const htmlEl = document.documentElement
-    const isDark = theme === "dark" || theme === "terminal"
 
-    if (theme === "terminal") {
-      // Ensure .dark is present so `dark:` Tailwind classes apply
-      htmlEl.classList.add("dark")
-    } else if (theme === "light") {
-      // Explicitly clean up .dark (next-themes removes "terminal" class but
-      // won't remove the .dark we added manually)
-      htmlEl.classList.remove("dark")
+    const sync = () => {
+      const hasTerminal = htmlEl.classList.contains("terminal")
+      const hasDark = htmlEl.classList.contains("dark")
+      // Read the authoritative stored theme to distinguish
+      // "dark was added by me for terminal" vs "user chose dark theme"
+      const stored = localStorage.getItem("locus-notes-theme")
+
+      if (hasTerminal && !hasDark) {
+        htmlEl.classList.add("dark")
+      } else if (!hasTerminal && hasDark && stored === "light") {
+        htmlEl.classList.remove("dark")
+      }
+
+      document.body.classList.toggle(
+        "dark-theme-active",
+        hasTerminal || hasDark
+      )
     }
-    // For "dark" theme, next-themes manages .dark itself — no action needed.
 
-    document.body.classList.toggle("dark-theme-active", isDark)
-  }, [theme])
+    // Run once on mount to catch the initial stored theme
+    sync()
 
-  return null
+    const observer = new MutationObserver(sync)
+    observer.observe(htmlEl, { attributes: true, attributeFilter: ["class"] })
+    return () => observer.disconnect()
+  }, [])
 }
 
 export function EnhancedThemeProvider({ children, ...props }: ThemeProviderProps) {
   const [mounted, setMounted] = useState(false)
+
+  useDarkClassSync()
 
   useEffect(() => {
     setMounted(true)
@@ -46,10 +57,5 @@ export function EnhancedThemeProvider({ children, ...props }: ThemeProviderProps
     return <>{children}</>
   }
 
-  return (
-    <NextThemesProvider {...props}>
-      <DarkClassSync />
-      {children}
-    </NextThemesProvider>
-  )
+  return <NextThemesProvider {...props}>{children}</NextThemesProvider>
 }
