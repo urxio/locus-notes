@@ -2,68 +2,47 @@
 
 import { useTheme } from "next-themes"
 import { useEffect, useState } from "react"
-import { Button } from "@/components/ui/button"
 import { LightModeIcon, DarkModeIcon } from "@/components/theme-icons"
 import { Terminal } from "lucide-react"
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
+import { cn } from "@/lib/utils"
 
-const CYCLE: Record<string, string> = {
-  light: "dark",
-  dark: "terminal",
-  terminal: "light",
-}
-
-const LABELS: Record<string, string> = {
-  light: "Light",
-  dark: "Dark",
-  terminal: "Terminal",
-}
+const THEMES = [
+  { key: "light",    label: "Light",    Icon: LightModeIcon },
+  { key: "dark",     label: "Dark",     Icon: DarkModeIcon  },
+  { key: "terminal", label: "Terminal", Icon: Terminal      },
+] as const
 
 export function ThemeSwitcher() {
   const { theme, setTheme } = useTheme()
   const [mounted, setMounted] = useState(false)
 
-  useEffect(() => {
-    setMounted(true)
-  }, [])
+  useEffect(() => { setMounted(true) }, [])
 
   if (!mounted) {
-    return (
-      <Button variant="outline" size="icon" className="w-9 h-9 rounded-full">
-        <span className="sr-only">Toggle theme</span>
-        <div className="h-5 w-5 bg-muted rounded-full animate-pulse" />
-      </Button>
-    )
-  }
-
-  const current = theme ?? "dark"
-  const next = CYCLE[current] ?? "dark"
-
-  function icon() {
-    if (current === "light")    return <DarkModeIcon    className="h-5 w-5 text-indigo-600 transition-transform duration-300 hover:rotate-12" />
-    if (current === "terminal") return <LightModeIcon   className="h-5 w-5 text-red-400   transition-transform duration-300 hover:rotate-45" />
-    /* dark */                  return <LightModeIcon   className="h-5 w-5 text-yellow-400 transition-transform duration-300 hover:rotate-45" />
+    return <div className="h-7 w-[72px] rounded-lg bg-muted animate-pulse" />
   }
 
   return (
-    <TooltipProvider>
-      <Tooltip>
-        <TooltipTrigger asChild>
-          <Button
-            variant="outline"
-            size="icon"
-            onClick={() => setTheme(next)}
-            className="w-9 h-9 rounded-full transition-all duration-300 ease-in-out"
-            aria-label={`Switch to ${LABELS[next]} mode`}
+    <div className="flex items-center gap-0.5 p-0.5 rounded-lg bg-black/10 dark:bg-white/[0.06]">
+      {THEMES.map(({ key, label, Icon }) => {
+        const active = theme === key
+        return (
+          <button
+            key={key}
+            onClick={() => setTheme(key)}
+            title={label}
+            aria-label={`Switch to ${label} mode`}
+            className={cn(
+              "w-6 h-6 rounded-md flex items-center justify-center transition-all",
+              active
+                ? "bg-white dark:bg-zinc-700 shadow-sm text-[#374151] dark:text-zinc-100"
+                : "text-[#9ca3af] dark:text-zinc-600 hover:text-[#374151] dark:hover:text-zinc-400"
+            )}
           >
-            {icon()}
-            <span className="sr-only">Cycle theme</span>
-          </Button>
-        </TooltipTrigger>
-        <TooltipContent side="bottom">
-          <p>{LABELS[current]} — switch to {LABELS[next]}</p>
-        </TooltipContent>
-      </Tooltip>
-    </TooltipProvider>
+            <Icon className="w-3 h-3" />
+          </button>
+        )
+      })}
+    </div>
   )
 }
