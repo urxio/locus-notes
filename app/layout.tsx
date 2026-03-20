@@ -32,6 +32,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <EnhancedThemeProvider
           attribute="class"
           defaultTheme="dark"
+          themes={["light", "dark", "terminal"]}
           enableSystem={false}
           storageKey="locus-notes-theme"
         >
