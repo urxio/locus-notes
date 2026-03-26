@@ -187,7 +187,7 @@ export default function AuthPage() {
                         type="button"
                         onClick={() => {
                             document.cookie = 'locus-local-mode=1; path=/; max-age=31536000; SameSite=Lax'
-                            router.push('/app')
+                            window.location.href = '/app'
                         }}
                         className="w-full py-2.5 rounded-xl border border-white/[0.08] hover:border-white/[0.16] text-zinc-500 hover:text-zinc-300 text-sm transition-all flex items-center justify-center gap-2"
                         style={{ background: 'rgba(255,255,255,0.03)' }}
