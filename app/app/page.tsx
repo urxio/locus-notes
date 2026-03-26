@@ -761,6 +761,13 @@ export default function NotesPage() {
     }
   }
 
+  function deleteTag(tag: string) {
+    setNotes(prev => prev.map(n =>
+      n.tags.includes(tag) ? { ...n, tags: n.tags.filter(t => t !== tag), updatedAt: Date.now() } : n
+    ))
+    if (activeTag === tag) setActiveTag(null)
+  }
+
   function restoreNote(id: string) {
     setNotes(prev => prev.map(n => n.id === id ? { ...n, trashedAt: undefined } : n))
   }
@@ -870,6 +877,7 @@ export default function NotesPage() {
                   setSelectedObjectTypeId(null)
                 }}
                 onSignOut={user ? handleSignOut : undefined}
+                onDeleteTag={deleteTag}
               />
             </div>
 

@@ -52,9 +52,10 @@ interface NavRailProps {
     onSelectInbox?: () => void
     /** Called when user clicks Sign Out; omit to hide the button (e.g. offline mode) */
     onSignOut?: () => void
+    onDeleteTag: (tag: string) => void
 }
 
-export function NavRail({ folders, selectedFolderId, onSelectFolder, people, objectTypes, deletedObjectTypes, onPromptDeleteObjectType, onDeletePerson, onCreatePerson, onCreateFolder, onDeleteFolder, onRenameFolder, onCreate, activeId, onSelect, allTags, activeTag, onTagFilter, graphOpen, onToggleGraph, notes, onToggleSidebar, trashCount, trashView, onSelectTrash, selectedObjectTypeId, onSelectObjectType, inboxView, inboxUnread, onSelectInbox, onSignOut }: NavRailProps) {
+export function NavRail({ folders, selectedFolderId, onSelectFolder, people, objectTypes, deletedObjectTypes, onPromptDeleteObjectType, onDeletePerson, onCreatePerson, onCreateFolder, onDeleteFolder, onRenameFolder, onCreate, activeId, onSelect, allTags, activeTag, onTagFilter, graphOpen, onToggleGraph, notes, onToggleSidebar, trashCount, trashView, onSelectTrash, selectedObjectTypeId, onSelectObjectType, inboxView, inboxUnread, onSelectInbox, onSignOut, onDeleteTag }: NavRailProps) {
     const { resolvedTheme } = useTheme()
     const dark = resolvedTheme !== 'light'
     const isTerminal = resolvedTheme === 'terminal'
@@ -372,18 +373,27 @@ export function NavRail({ folders, selectedFolderId, onSelectFolder, people, obj
                             </div>
                             <div className="flex flex-wrap gap-1.5 px-1 pb-2">
                                 {allTags.map(tag => (
-                                    <button key={tag}
-                                        onClick={() => { onTagFilter(activeTag === tag ? null : tag); onSelectFolder(null) }}
-                                        className={cn(
-                                            "flex items-center gap-1 px-2 py-1 rounded-md text-[11px] transition-all",
-                                            activeTag === tag
-                                                ? "bg-indigo-50 dark:bg-indigo-950/50 text-indigo-700 dark:text-indigo-300 font-semibold ring-1 ring-indigo-200 dark:ring-indigo-900/50"
-                                                : "bg-white dark:bg-zinc-800/50 text-[#6b7280] dark:text-zinc-400 hover:bg-slate-50 dark:hover:bg-zinc-700/50 border border-[#e5e7eb] dark:border-zinc-800"
-                                        )}
-                                    >
-                                        <Hash className={cn("w-3 h-3 opacity-70", activeTag === tag ? "text-indigo-600 dark:text-indigo-400" : "")} />
-                                        <span className="font-mono text-[11px] truncate max-w-[120px]">{tag}</span>
-                                    </button>
+                                    <span key={tag} className="group relative inline-flex items-center">
+                                        <button
+                                            onClick={() => { onTagFilter(activeTag === tag ? null : tag); onSelectFolder(null) }}
+                                            className={cn(
+                                                "flex items-center gap-1 pl-2 pr-6 py-1 rounded-md text-[11px] transition-all",
+                                                activeTag === tag
+                                                    ? "bg-indigo-50 dark:bg-indigo-950/50 text-indigo-700 dark:text-indigo-300 font-semibold ring-1 ring-indigo-200 dark:ring-indigo-900/50"
+                                                    : "bg-white dark:bg-zinc-800/50 text-[#6b7280] dark:text-zinc-400 hover:bg-slate-50 dark:hover:bg-zinc-700/50 border border-[#e5e7eb] dark:border-zinc-800"
+                                            )}
+                                        >
+                                            <Hash className={cn("w-3 h-3 opacity-70 flex-shrink-0", activeTag === tag ? "text-indigo-600 dark:text-indigo-400" : "")} />
+                                            <span className="font-mono text-[11px] truncate max-w-[100px]">{tag}</span>
+                                        </button>
+                                        <button
+                                            onClick={e => { e.stopPropagation(); onDeleteTag(tag) }}
+                                            title={`Delete #${tag} from all notes`}
+                                            className="absolute right-1.5 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity text-[#9ca3af] dark:text-zinc-600 hover:text-red-500 dark:hover:text-red-400"
+                                        >
+                                            <X className="w-2.5 h-2.5" />
+                                        </button>
+                                    </span>
                                 ))}
                             </div>
                         </div>

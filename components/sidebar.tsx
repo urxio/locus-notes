@@ -35,9 +35,10 @@ interface SidebarProps {
     onDeleteFolder: (id: string) => void
     onMoveNote: (noteId: string, folderId: string | null) => void
     onDeleteNote: (noteId: string) => void
+    onDeleteTag: (tag: string) => void
 }
 
-export function Sidebar({ notes, allNotes, activeId, search, onSearch, onSelect, onCreate, activeTag, onTagFilter, people, onDeletePerson, objectTypes, deletedObjectTypes, onPromptDeleteObjectType, onCreateObjectType, folders, expandedFolders, onToggleFolder, onCreateFolder, onRenameFolder, onDeleteFolder, onMoveNote, onDeleteNote }: SidebarProps) {
+export function Sidebar({ notes, allNotes, activeId, search, onSearch, onSelect, onCreate, activeTag, onTagFilter, people, onDeletePerson, objectTypes, deletedObjectTypes, onPromptDeleteObjectType, onCreateObjectType, folders, expandedFolders, onToggleFolder, onCreateFolder, onRenameFolder, onDeleteFolder, onMoveNote, onDeleteNote, onDeleteTag }: SidebarProps) {
     const [ctxMenu, setCtxMenu] = useState<{ x: number; y: number; type: 'note' | 'person' | 'folder' | 'objectType'; id: string } | null>(null)
     const [editingFolderId, setEditingFolderId] = useState<string | null>(null)
     const [editingName, setEditingName] = useState('')
@@ -302,17 +303,26 @@ export function Sidebar({ notes, allNotes, activeId, search, onSearch, onSelect,
                             {allTags.map(tag => {
                                 const count = notes.filter(n => n.tags.includes(tag)).length
                                 return (
-                                    <button key={tag}
-                                        onClick={() => onTagFilter(activeTag === tag ? null : tag)}
-                                        className={cn(
-                                            "text-[10px] px-2 py-0.5 rounded-full border transition-colors font-mono",
-                                            activeTag === tag
-                                                ? 'bg-primary text-primary-foreground border-primary'
-                                                : 'bg-background/60 text-muted-foreground border-border hover:border-primary/50 hover:text-foreground'
-                                        )}
-                                    >
-                                        #{tag} <span className="opacity-60">{count}</span>
-                                    </button>
+                                    <span key={tag} className="group relative inline-flex items-center">
+                                        <button
+                                            onClick={() => onTagFilter(activeTag === tag ? null : tag)}
+                                            className={cn(
+                                                "text-[10px] px-2 py-0.5 rounded-full border transition-colors font-mono pr-5",
+                                                activeTag === tag
+                                                    ? 'bg-primary text-primary-foreground border-primary'
+                                                    : 'bg-background/60 text-muted-foreground border-border hover:border-primary/50 hover:text-foreground'
+                                            )}
+                                        >
+                                            #{tag} <span className="opacity-60">{count}</span>
+                                        </button>
+                                        <button
+                                            onClick={e => { e.stopPropagation(); onDeleteTag(tag) }}
+                                            title={`Delete #${tag} from all notes`}
+                                            className="absolute right-1 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground hover:text-destructive"
+                                        >
+                                            <X className="w-2.5 h-2.5" />
+                                        </button>
+                                    </span>
                                 )
                             })}
                         </div>
