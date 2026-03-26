@@ -56,6 +56,7 @@ import { ObjectBoardPanel } from "@/components/object-board-panel"
 import { NoteEditor } from "@/components/note-editor"
 import { Sidebar } from "@/components/sidebar"
 import { InboxPanel } from "@/components/inbox-panel"
+import { TerminalShell } from "@/components/terminal-shell"
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -826,6 +827,85 @@ export default function NotesPage() {
       <div className="flex h-screen items-center justify-center">
         <div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin" />
       </div>
+    )
+  }
+
+  // ── Terminal mode: render the full glassmorphism IDE shell ───────────────
+  if (resolvedTheme === 'terminal') {
+    return (
+      <TooltipProvider delayDuration={400}>
+        <TerminalShell
+          notes={notes}
+          liveNotes={liveNotes}
+          panelNotes={panelNotes}
+          activeNote={activeNote}
+          people={people}
+          folders={folders}
+          customObjectTypes={customObjectTypes}
+          deletedObjectTypes={deletedObjectTypes}
+          allTags={allTags}
+          inboxItems={inboxItems}
+          trashCount={trashCount}
+          activeId={activeId}
+          search={search}
+          activeTag={activeTag}
+          selectedFolderId={selectedFolderId}
+          selectedObjectTypeId={selectedObjectTypeId}
+          trashView={trashView}
+          inboxView={inboxView}
+          graphOpen={graphOpen}
+          navStack={navStack}
+          splitNoteId={splitNoteId}
+          graphWidth={graphWidth}
+          setActiveId={setActiveId}
+          setSearch={setSearch}
+          setActiveTag={setActiveTag}
+          setSelectedFolderId={setSelectedFolderId}
+          setSelectedObjectTypeId={setSelectedObjectTypeId}
+          setTrashView={setTrashView}
+          setInboxView={setInboxView}
+          setGraphOpen={setGraphOpen}
+          setNavStack={setNavStack}
+          setSplitNoteId={setSplitNoteId}
+          setGraphWidth={setGraphWidth}
+          setInboxItems={setInboxItems}
+          createNote={createNote}
+          updateNote={updateNote}
+          deleteNote={deleteNote}
+          restoreNote={restoreNote}
+          permanentlyDeleteNote={permanentlyDeleteNote}
+          moveNoteToFolder={moveNoteToFolder}
+          createPerson={createPerson}
+          navigateTo={navigateTo}
+          navigateToBreadcrumb={navigateToBreadcrumb}
+          createObjectType={createObjectType}
+          deleteTag={deleteTag}
+          handleSignOut={handleSignOut}
+        />
+        <AlertDialog open={!!deleteTypePrompt} onOpenChange={(o: boolean) => { if (!o) setDeleteTypePrompt(null) }}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Delete Object Type</AlertDialogTitle>
+              <AlertDialogDescription>
+                What would you like to do with the existing objects of this type?
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter className="flex-col sm:flex-row gap-2 mt-2">
+              <AlertDialogCancel>Cancel</AlertDialogCancel>
+              <Button variant="outline" onClick={() => {
+                if (deleteTypePrompt) deleteObjectType(deleteTypePrompt, false)
+                setDeleteTypePrompt(null)
+              }}>Keep Objects</Button>
+              <AlertDialogAction onClick={() => {
+                if (deleteTypePrompt) deleteObjectType(deleteTypePrompt, true)
+                setDeleteTypePrompt(null)
+              }} className="bg-red-600 hover:bg-red-700 focus:ring-red-600">
+                Delete Type & Objects
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+      </TooltipProvider>
     )
   }
 
