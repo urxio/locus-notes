@@ -1,6 +1,6 @@
 import { Folder, ObjectType, Person, Note, Block, BlockType, TreeItem, NoteProperty, PropertyType, InboxItem } from './types'
 import type { SupabaseClient } from '@supabase/supabase-js'
-import { SEED_NOTES, PERSON_EMOJIS, NOTE_ICON_KEYS, NOTE_COLORS } from './constants'
+import { SEED_NOTES, SEED_PEOPLE, PERSON_EMOJIS, NOTE_ICON_KEYS, NOTE_COLORS } from './constants'
 
 export const STORAGE_KEY = 'locus-notes-v1'
 export const PEOPLE_STORAGE_KEY = 'locus-people-v1'
@@ -67,12 +67,12 @@ export function saveDeletedObjectTypes(ids: string[]) {
 }
 
 export function loadPeople(): Person[] {
-    if (typeof window === 'undefined') return []
+    if (typeof window === 'undefined') return SEED_PEOPLE
     try {
         const raw = localStorage.getItem(PEOPLE_STORAGE_KEY)
         if (raw) return JSON.parse(raw)
     } catch { }
-    return []
+    return SEED_PEOPLE
 }
 
 export function savePeople(people: Person[]) {
