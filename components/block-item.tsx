@@ -164,8 +164,11 @@ export function BlockItem({ block, index, listIndex, numBlocks, isFocused, isSel
                 textBeforeCursor = pre.toString()
             }
 
-            const atMatch = isCollapsed ? textBeforeCursor.match(/@([^@\s]*)$/) : null
-            if (atMatch) {
+            // Allow spaces inside the mention query (for multi-word names like "John Doe")
+            // Stop matching on double-space (exit intent) or another @ symbol
+            const atMatch = isCollapsed ? textBeforeCursor.match(/@([^@]*?)(?:  .*)?$/) : null
+            const atMatchValid = atMatch && !atMatch[1].includes('  ') // double-space = exit
+            if (atMatchValid && atMatch) {
                 setMentionFilter(atMatch[1])
                 setMentionIdx(0)
                 setShowMentionMenu(true)
