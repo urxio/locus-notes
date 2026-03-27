@@ -270,7 +270,7 @@ export function NavRail({ folders, selectedFolderId, onSelectFolder, people, obj
                                     onSubmit={e => {
                                         e.preventDefault()
                                         const name = newObjectTypeName.trim()
-                                        if (name) onCreateObjectType?.(name, 'Tag')
+                                        if (name) onCreateObjectType?.(name, 'Star')
                                         setCreatingObjectType(false)
                                         setNewObjectTypeName('')
                                     }}
