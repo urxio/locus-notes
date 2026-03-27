@@ -780,8 +780,8 @@ export default function NotesPage() {
     // ── Propagate property schema changes to all sibling notes of the same object type ──
     if (patch.properties !== undefined) {
       const ownerPerson = people.find(p => p.noteId === id)
-      if (ownerPerson?.typeId) {
-        const typeId = ownerPerson.typeId
+      if (ownerPerson) {
+        const typeId = ownerPerson.typeId ?? 'person'
         const currentNote = notes.find(n => n.id === id)
         const oldProps: NoteProperty[] = currentNote?.properties ?? []
         const newProps: NoteProperty[] = patch.properties
