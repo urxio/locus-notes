@@ -1034,6 +1034,7 @@ export default function NotesPage() {
                 }}
                 onSignOut={handleSignOut}
                 onDeleteTag={deleteTag}
+                onCreateObjectType={createObjectType}
               />
             </div>
 
