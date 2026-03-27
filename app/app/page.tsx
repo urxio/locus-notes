@@ -25,7 +25,7 @@ import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
 
-import { BlockType, Block, Note, Folder, TreeItem, Person, ObjectType, GNode, GEdge, InboxItem } from "@/lib/types"
+import { BlockType, Block, Note, Folder, TreeItem, Person, ObjectType, GNode, GEdge, InboxItem, NoteProperty, PropertyType } from "@/lib/types"
 import { NOTE_COLORS, NOTE_ICON_KEYS, BLOCK_PLACEHOLDERS, SLASH_MENU_ITEMS, BUILTIN_OBJECT_TYPES, PERSON_EMOJIS } from "@/lib/constants"
 import {
   loadFolders, saveFolders, loadObjectTypes, saveObjectTypes,
@@ -597,13 +597,21 @@ export default function NotesPage() {
     const allTypes = [...BUILTIN_OBJECT_TYPES, ...customObjectTypes]
     const objType = allTypes.find(t => t.id === typeId)
     const noteEmoji = objType?.emoji ?? PERSON_EMOJIS[Math.floor(Math.random() * PERSON_EMOJIS.length)]
+    // Inherit the current shared schema for this type (from an existing sibling note),
+    // falling back to static defaults for brand-new types with no siblings yet.
+    const inheritedSchema = schemaForType(typeId)
+    const properties: NoteProperty[] = inheritedSchema.map(p => ({
+      ...p,
+      id: crypto.randomUUID(), // fresh id so each note has independent property instances
+      value: defaultPropertyValue(p.type),
+    }))
     const personNote: Note = {
       ...mkNote(noteEmoji),
       title: name,
       emoji: noteEmoji,
       blocks: [{ id: crypto.randomUUID(), type: 'p', content: '' }],
       tags: [],
-      properties: defaultPropertiesForType(typeId),
+      properties,
     }
     const person: Person = { ...mkPerson(name, noteEmoji), noteId: personNote.id, typeId }
       // Store personId on the note so we can identify it as a person page
@@ -692,6 +700,21 @@ export default function NotesPage() {
     return tmp.innerHTML
   }
 
+  /** Returns a blank value for a given property type (used when adding a schema property to sibling notes). */
+  function defaultPropertyValue(type: PropertyType): NoteProperty['value'] {
+    if (type === 'checkbox') return false
+    if (type === 'multi_select' || type === 'person') return []
+    return null
+  }
+
+  /** Returns the current shared property schema for a given object typeId
+   *  by reading the first sibling note's properties (excluding a note to skip). */
+  function schemaForType(typeId: string, skipNoteId?: string): NoteProperty[] {
+    const sibling = people.find(p => (p.typeId ?? 'person') === typeId && p.noteId && p.noteId !== skipNoteId)
+    const sibNote = sibling ? notes.find(n => n.id === sibling.noteId) : null
+    return sibNote?.properties ?? defaultPropertiesForType(typeId)
+  }
+
   function updateNote(id: string, patch: Partial<Note>) {
     // When a person-linked note's title changes, propagate rename to all @mentions
     if (patch.title !== undefined) {
@@ -754,6 +777,54 @@ export default function NotesPage() {
         return
       }
     }
+    // ── Propagate property schema changes to all sibling notes of the same object type ──
+    if (patch.properties !== undefined) {
+      const ownerPerson = people.find(p => p.noteId === id)
+      if (ownerPerson?.typeId) {
+        const typeId = ownerPerson.typeId
+        const currentNote = notes.find(n => n.id === id)
+        const oldProps: NoteProperty[] = currentNote?.properties ?? []
+        const newProps: NoteProperty[] = patch.properties
+
+        const addedProps    = newProps.filter(np => !oldProps.some(op => op.id === np.id))
+        const removedIds    = oldProps.filter(op => !newProps.some(np => np.id === op.id)).map(p => p.id)
+        const schemaChanged = newProps.filter(np => {
+          const old = oldProps.find(op => op.id === np.id)
+          if (!old) return false
+          return old.name !== np.name || old.type !== np.type ||
+            JSON.stringify(old.options ?? []) !== JSON.stringify(np.options ?? [])
+        })
+
+        if (addedProps.length > 0 || removedIds.length > 0 || schemaChanged.length > 0) {
+          const siblingNoteIds = new Set(
+            people
+              .filter(p => p.noteId && p.noteId !== id && (p.typeId ?? 'person') === typeId)
+              .map(p => p.noteId as string)
+          )
+          setNotes(prev => prev.map(n => {
+            if (n.id === id) return { ...n, ...patch, updatedAt: Date.now() }
+            if (!siblingNoteIds.has(n.id)) return n
+            let sibProps = [...(n.properties ?? [])]
+            sibProps = sibProps.filter(p => !removedIds.includes(p.id))
+            for (const added of addedProps) {
+              if (!sibProps.some(p => p.id === added.id)) {
+                sibProps.push({ ...added, value: defaultPropertyValue(added.type) })
+              }
+            }
+            for (const changed of schemaChanged) {
+              sibProps = sibProps.map(p =>
+                p.id === changed.id
+                  ? { ...p, name: changed.name, type: changed.type, options: changed.options }
+                  : p
+              )
+            }
+            return { ...n, properties: sibProps, updatedAt: Date.now() }
+          }))
+          return
+        }
+      }
+    }
+
     setNotes(prev => prev.map(n => n.id === id ? { ...n, ...patch, updatedAt: Date.now() } : n))
   }
 
