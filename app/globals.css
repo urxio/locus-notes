@@ -423,6 +423,7 @@ html.terminal::before {
 
 /* ── Icon Dock ─── */
 .ts-dock {
+  overflow: visible !important;
   width: 52px;
   flex-shrink: 0;
   display: flex;
