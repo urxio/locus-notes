@@ -27,7 +27,7 @@ const THEMES = [
   },
 ] as const
 
-export function ThemeSwitcher() {
+export function ThemeSwitcher({ side = "up" }: { side?: "up" | "right" }) {
   const { theme, setTheme } = useTheme()
   const [mounted, setMounted] = useState(false)
   const [open, setOpen] = useState(false)
@@ -70,7 +70,12 @@ export function ThemeSwitcher() {
 
       {/* Dropdown */}
       {open && (
-        <div className="absolute bottom-full left-0 mb-2 w-44 rounded-xl border border-[#e5e7eb] dark:border-zinc-700/60 bg-white dark:bg-zinc-900 shadow-xl z-50 py-1.5 overflow-hidden">
+        <div className={cn(
+          "absolute w-44 rounded-xl border border-[#e5e7eb] dark:border-zinc-700/60 bg-white dark:bg-zinc-900 shadow-xl z-50 py-1.5 overflow-hidden",
+          side === "right"
+            ? "left-full bottom-0 ml-2"
+            : "bottom-full left-0 mb-2"
+        )}>
           <p className="px-3 pb-1.5 pt-0.5 font-mono text-[9px] uppercase tracking-widest text-[#d1d5db] dark:text-zinc-600">
             Appearance
           </p>

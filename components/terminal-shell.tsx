@@ -230,7 +230,7 @@ export function TerminalShell(props: TerminalShellProps) {
 
         {/* Theme switcher */}
         <div className="ts-dock-icon" style={{ width: 36, height: 36 }}>
-          <ThemeSwitcher />
+          <ThemeSwitcher side="right" />
         </div>
 
         <Tooltip>

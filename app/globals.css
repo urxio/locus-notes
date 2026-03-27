@@ -475,6 +475,35 @@ html.terminal::before {
   margin: 8px 0; flex-shrink: 0;
 }
 
+/* ── Theme-switcher dropdown in terminal mode ─── */
+.ts-dock .relative > div[class*="absolute"] {
+  background: #0e1a15 !important;
+  border-color: rgba(78,205,196,0.15) !important;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.6), 0 0 0 1px rgba(78,205,196,0.08) !important;
+}
+.ts-dock .relative > div[class*="absolute"] p {
+  color: rgba(74,107,94,0.55) !important;
+}
+.ts-dock .relative > div[class*="absolute"] button {
+  color: #8fbcaa !important;
+}
+.ts-dock .relative > div[class*="absolute"] button:hover {
+  background: rgba(78,205,196,0.07) !important;
+}
+.ts-dock .relative > div[class*="absolute"] button[class*="bg-indigo"] {
+  background: rgba(78,205,196,0.10) !important;
+}
+.ts-dock .relative > div[class*="absolute"] [class*="text-indigo"] {
+  color: #4ecdc4 !important;
+}
+.ts-dock .relative > div[class*="absolute"] [class*="text-zinc"],
+.ts-dock .relative > div[class*="absolute"] [class*="text-\\[#9ca"] {
+  color: rgba(74,107,94,0.55) !important;
+}
+.ts-dock .relative > div[class*="absolute"] [class*="text-\\[#374"] {
+  color: #8fbcaa !important;
+}
+
 /* ── Explorer Panel ─── */
 .ts-explorer {
   width: 240px; flex-shrink: 0;
