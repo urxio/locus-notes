@@ -1,6 +1,6 @@
-import React, { useRef, useState, useEffect, useMemo } from "react"
+import React, { useRef, useState, useEffect, useMemo, useCallback } from "react"
 import { useTheme } from "next-themes"
-import { Maximize2, Minimize2, Network, Locate, Globe } from "lucide-react"
+import { Maximize2, Minimize2, Network, Locate, Globe, GitBranch } from "lucide-react"
 
 import { Note, Person, GNode, GEdge } from "@/lib/types"
 import { buildGraph, tickSim } from "@/lib/graph"
@@ -63,6 +63,8 @@ export function GraphPanel({ notes, people, activeNoteId, onSelectNote, isExpand
     const dragRef = useRef<{ id: string; ox: number; oy: number; lpx: number; lpy: number; lvx: number; lvy: number } | null>(null)
     const panVRef = useRef({ vx: 0, vy: 0 })    // pan inertia velocity (screen px/frame)
     const afterThrowRef = useRef(0)              // ticks remaining for post-drag sim
+    const [mindMapMode, setMindMapMode] = useState(false)
+    const frozenRef = useRef(false)              // true = skip physics, positions are locked
 
     // Keep a ref so the graphKey effect can read the current active note
     // without becoming a dependency (which would rebuild the graph on every
@@ -129,6 +131,9 @@ export function GraphPanel({ notes, people, activeNoteId, onSelectNote, isExpand
         nodesRef.current = nodes
         edgesRef.current = edges
         tickCountRef.current = 0
+        // Unfreeze so new nodes get physics-settled positions
+        frozenRef.current = false
+        setMindMapMode(false)
     }, [graphKey])
 
     useEffect(() => {
@@ -141,7 +146,7 @@ export function GraphPanel({ notes, people, activeNoteId, onSelectNote, isExpand
                 : dragRef.current ? 0.18          // higher alpha so neighbours react during drag
                 : afterThrowRef.current > 0 ? 0.12 // post-release throw sim
                 : 0
-            if (alpha > 0) {
+            if (alpha > 0 && !frozenRef.current) {
                 tickSim(nodesRef.current, edgesRef.current, size.w, size.h, alpha)
                 tickCountRef.current++
                 forceRender(k => k + 1)
@@ -175,6 +180,91 @@ export function GraphPanel({ notes, people, activeNoteId, onSelectNote, isExpand
         }, 60)
         return () => clearTimeout(timeout)
     }, [localMode, activeNoteId])
+
+    const computeMindMapLayout = useCallback((rootNoteId: string | null, subset?: Set<string>) => {
+        const nodes = subset
+            ? nodesRef.current.filter(n => subset.has(n.id))
+            : nodesRef.current
+        const edges = edgesRef.current.filter(e =>
+            (!subset || (subset.has(e.source) && subset.has(e.target)))
+        )
+        if (nodes.length === 0) return
+
+        const nodeMap = new Map(nodesRef.current.map(n => [n.id, n]))
+
+        // Build adjacency within the subset
+        const adj = new Map<string, string[]>()
+        for (const n of nodes) adj.set(n.id, [])
+        for (const e of edges) {
+            adj.get(e.source)?.push(e.target)
+            adj.get(e.target)?.push(e.source)
+        }
+
+        // Root: active note, or most-connected node
+        let rootId: string | undefined = rootNoteId ? `note:${rootNoteId}` : undefined
+        if (!rootId || !nodeMap.has(rootId)) {
+            let maxDeg = -1
+            for (const [id, neighbors] of adj) {
+                if (neighbors.length > maxDeg) { maxDeg = neighbors.length; rootId = id }
+            }
+        }
+        if (!rootId) return
+
+        // BFS tree
+        const visited = new Set<string>([rootId])
+        const children = new Map<string, string[]>()
+        const queue = [rootId]
+        for (const n of nodes) children.set(n.id, [])
+
+        while (queue.length > 0) {
+            const id = queue.shift()!
+            for (const nid of (adj.get(id) || [])) {
+                if (!visited.has(nid)) {
+                    visited.add(nid)
+                    children.get(id)!.push(nid)
+                    queue.push(nid)
+                }
+            }
+        }
+
+        const cx = sizeRef.current.w / 2
+        const cy = sizeRef.current.h / 2
+        const LEVEL_DIST = 155
+
+        // Place root at center
+        const root = nodeMap.get(rootId)
+        if (root) { root.x = cx; root.y = cy; root.vx = 0; root.vy = 0 }
+
+        // Recursive radial placement
+        function place(id: string, angle: number, spread: number, dist: number) {
+            const node = nodeMap.get(id)
+            if (!node) return
+            node.x = cx + Math.cos(angle) * dist
+            node.y = cy + Math.sin(angle) * dist
+            node.vx = 0; node.vy = 0
+
+            const kids = children.get(id) || []
+            if (kids.length === 0) return
+            const kidSpread = spread / kids.length
+            const startAngle = angle - spread / 2 + kidSpread / 2
+            kids.forEach((kid, i) => {
+                place(kid, startAngle + i * kidSpread, kidSpread * 0.92, dist + LEVEL_DIST)
+            })
+        }
+
+        const rootKids = children.get(rootId) || []
+        if (rootKids.length > 0) {
+            const angleStep = (Math.PI * 2) / rootKids.length
+            rootKids.forEach((kid, i) => {
+                const angle = i * angleStep - Math.PI / 2
+                place(kid, angle, angleStep * 0.88, LEVEL_DIST)
+            })
+        }
+
+        frozenRef.current = true
+        tickCountRef.current = 999  // stop physics
+        forceRender(k => k + 1)
+    }, [])
 
     function toGraph(screenX: number, screenY: number) {
         const rect = containerRef.current!.getBoundingClientRect()
@@ -216,6 +306,7 @@ export function GraphPanel({ notes, people, activeNoteId, onSelectNote, isExpand
                 drag.lpx = x; drag.lpy = y
                 node.vx = 0; node.vy = 0  // prevent sim drift while dragging
             }
+            if (frozenRef.current) forceRender(k => k + 1)
         } else if (panRef.current.active) {
             // Track pan velocity for inertia
             const dx = e.clientX - panRef.current.lpx
@@ -237,7 +328,7 @@ export function GraphPanel({ notes, people, activeNoteId, onSelectNote, isExpand
             const { x, y } = toGraph(e.clientX, e.clientY)
             const moved = node ? Math.abs((x - drag.ox) - node.x) + Math.abs((y - drag.oy) - node.y) : 999
             if (moved < 8 && node?.type === 'note' && node.noteId) onSelectNote(node.noteId)
-            if (node) {
+            if (node && !frozenRef.current) {
                 // Throw! Apply the smoothed drag velocity so the node coasts on release
                 node.vx = drag.lvx * 4
                 node.vy = drag.lvy * 4
@@ -510,13 +601,57 @@ export function GraphPanel({ notes, people, activeNoteId, onSelectNote, isExpand
                             e.currentTarget.style.borderColor = localMode ? T.ctrlActiveBorder : T.ctrlBorder
                         }}
                         onPointerDown={e => e.stopPropagation()}
-                        onClick={() => setLocalMode(m => !m)}
+                        onClick={() => {
+                            frozenRef.current = false
+                            tickCountRef.current = 0
+                            setMindMapMode(false)
+                            setLocalMode(m => !m)
+                        }}
                         title={localMode ? 'Show all pages in graph' : 'Focus on current page only'}
                     >
                         {localMode
                             ? <><Locate className="w-2.5 h-2.5" />Local</>
                             : <><Globe className="w-2.5 h-2.5" />All</>
                         }
+                    </button>
+                    {/* Mind Map toggle */}
+                    <button
+                        className="flex items-center gap-1 h-6 px-2 rounded-md text-[9px] font-semibold tracking-wider uppercase transition-all"
+                        style={{
+                            background: mindMapMode ? T.ctrlActiveBg : T.ctrl,
+                            border: `1px solid ${mindMapMode ? T.ctrlActiveBorder : T.ctrlBorder}`,
+                            color: mindMapMode ? T.ctrlActiveText : T.ctrlText,
+                            fontFamily: 'ui-sans-serif,system-ui,sans-serif',
+                        }}
+                        onMouseEnter={e => {
+                            if (!mindMapMode) {
+                                e.currentTarget.style.color = T.ctrlHoverText
+                                e.currentTarget.style.borderColor = T.ctrlHoverBorder
+                            }
+                        }}
+                        onMouseLeave={e => {
+                            e.currentTarget.style.color = mindMapMode ? T.ctrlActiveText : T.ctrlText
+                            e.currentTarget.style.borderColor = mindMapMode ? T.ctrlActiveBorder : T.ctrlBorder
+                        }}
+                        onPointerDown={e => e.stopPropagation()}
+                        onClick={() => {
+                            if (mindMapMode) {
+                                // Switch back to force layout
+                                frozenRef.current = false
+                                tickCountRef.current = 0
+                                setMindMapMode(false)
+                            } else {
+                                // Compute mind map layout on visible nodes
+                                const subsetIds = localMode && activeNoteId
+                                    ? new Set(visibleNodes.map(n => n.id))
+                                    : undefined
+                                computeMindMapLayout(activeNoteId, subsetIds)
+                                setMindMapMode(true)
+                            }
+                        }}
+                        title={mindMapMode ? 'Switch to force layout' : 'Switch to mind map layout'}
+                    >
+                        <GitBranch className="w-2.5 h-2.5" />Map
                     </button>
                     {/* Expand / minimize */}
                     <button
