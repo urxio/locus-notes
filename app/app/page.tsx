@@ -1164,15 +1164,9 @@ export default function NotesPage() {
                 className="w-11 h-11 rounded-full bg-indigo-600 text-white flex items-center justify-center shadow-lg shadow-indigo-500/30 -mt-5">
                 <Plus className="w-5 h-5" />
               </button>
-              <button onClick={() => { if (activeId) setMobileView('editor') }}
-                className={cn("flex flex-col items-center gap-0.5 py-1 px-3 rounded-lg transition-colors",
-                  mobileView === 'editor' ? "text-indigo-600 dark:text-indigo-400" : "text-zinc-400 dark:text-zinc-500",
-                  !activeId && "opacity-30")}>
-                <BookOpen className="w-5 h-5" />
-                <span className="text-[9px] font-medium">Editor</span>
-              </button>
               <button onClick={() => { setSearch(''); setMobileSearchFocus(true); setMobileView('list') }}
-                className="flex flex-col items-center gap-0.5 py-1 px-3 rounded-lg text-zinc-400 dark:text-zinc-500 transition-colors">
+                className={cn("flex flex-col items-center gap-0.5 py-1 px-3 rounded-lg transition-colors",
+                  mobileSearchFocus ? "text-indigo-600 dark:text-indigo-400" : "text-zinc-400 dark:text-zinc-500")}>
                 <Search className="w-5 h-5" />
                 <span className="text-[9px] font-medium">Search</span>
               </button>
