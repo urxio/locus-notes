@@ -18,6 +18,7 @@ interface BlockItemProps {
     onInsert: (afterId: string, type?: BlockType, content?: string) => void
     onDelete: (id: string) => void
     onMergePrev: (id: string, content: string) => void
+    onDuplicate: (id: string) => void
     onFocus: (id: string) => void
     onSelect: (id: string, evt: React.MouseEvent) => void
     onDragSelectStart: (id: string, idx: number) => void
