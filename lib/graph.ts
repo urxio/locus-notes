@@ -17,6 +17,12 @@ function stripHtml(s: string): string {
 export function buildGraph(notes: Note[], people: Person[], w: number, h: number, existingNodes?: Map<string, GNode>): { nodes: GNode[]; edges: GEdge[] } {
     const nodes: GNode[] = []
     const edges: GEdge[] = []
+    // Track added edges by "source→target" key to deduplicate in O(1) per lookup
+    const edgeSet = new Set<string>()
+    const addEdge = (source: string, target: string) => {
+        const key = `${source}→${target}`
+        if (!edgeSet.has(key)) { edgeSet.add(key); edges.push({ source, target }) }
+    }
     const tagSet = new Set<string>()
     notes.forEach(n => n.tags.forEach(t => tagSet.add(t)))
     const allTags = [...tagSet]
@@ -47,7 +53,7 @@ export function buildGraph(notes: Note[], people: Person[], w: number, h: number
         })
     })
     notes.forEach(note => note.tags.forEach(tag =>
-        edges.push({ source: `note:${note.id}`, target: `tag:${tag}` })
+        addEdge(`note:${note.id}`, `tag:${tag}`)
     ))
     // Mention edges: connect notes that @mention a person to that person's note.
     // We check the raw HTML (data-mention attribute) AND the stripped plain text
@@ -67,9 +73,7 @@ export function buildGraph(notes: Note[], people: Person[], w: number, h: number
                     raw.includes(`data-mention="${name}"`) ||   // injected HTML span
                     plain.includes(`@${name}`)                  // plain text / stripped HTML
                 if (found) {
-                    const src = `note:${note.id}`, tgt = `note:${person.noteId}`
-                    if (!edges.some(e => e.source === src && e.target === tgt))
-                        edges.push({ source: src, target: tgt })
+                    addEdge(`note:${note.id}`, `note:${person.noteId}`)
                 }
             })
         })
@@ -83,9 +87,7 @@ export function buildGraph(notes: Note[], people: Person[], w: number, h: number
             while ((m = re.exec(content)) !== null) {
                 const targetId = m[1]
                 if (targetId === note.id) continue
-                const src = `note:${note.id}`, tgt = `note:${targetId}`
-                if (!edges.some(e => e.source === src && e.target === tgt))
-                    edges.push({ source: src, target: tgt })
+                addEdge(`note:${note.id}`, `note:${targetId}`)
             }
         })
     })

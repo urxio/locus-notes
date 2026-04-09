@@ -1,6 +1,70 @@
 import { Folder, ObjectType, Person, Note, Block, BlockType, TreeItem, NoteProperty, PropertyType, InboxItem } from './types'
-import type { SupabaseClient } from '@supabase/supabase-js'
+import type { SupabaseClient, User } from '@supabase/supabase-js'
 import { SEED_NOTES, SEED_PEOPLE, PERSON_EMOJIS, NOTE_ICON_KEYS, NOTE_COLORS } from './constants'
+
+// ─── Supabase row shapes (snake_case, as returned by Postgres) ─────────────────
+
+interface DbNote {
+    id: string
+    user_id: string
+    title: string
+    emoji: string
+    color: string
+    blocks: Block[]
+    tags: string[]
+    properties: NoteProperty[]
+    created_at: number
+    updated_at: number
+    person_id: string | null
+    folder_id: string | null
+    trashed_at: number | null
+    note_type: Note['noteType'] | null
+    due_date: string | null
+    last_viewed: string | null
+}
+
+interface DbPerson {
+    id: string
+    user_id: string
+    name: string
+    emoji: string
+    note_id: string | null
+    type_id: string | null
+}
+
+interface DbFolder {
+    id: string
+    user_id: string
+    name: string
+    emoji: string
+    parent_id: string | null
+    created_at: number
+}
+
+interface DbObjectType {
+    id: string
+    user_id: string
+    name: string
+    emoji: string
+    is_builtin: boolean
+}
+
+interface DbInboxItem {
+    id: string
+    user_id: string
+    note_id: string
+    type: InboxItem['type']
+    subject: string
+    sender: string
+    preview: string
+    timestamp: string
+    read: boolean
+}
+
+interface DbDeletedObjectType {
+    user_id: string
+    type_id: string
+}
 
 export const STORAGE_KEY = 'locus-notes-v1'
 export const PEOPLE_STORAGE_KEY = 'locus-people-v1'
@@ -248,9 +312,9 @@ export function noteToDb(n: Note, userId: string) {
         title:       n.title,
         emoji:       n.emoji,
         color:       n.color,
-        blocks:      n.blocks      as any,
+        blocks:      n.blocks,
         tags:        n.tags,
-        properties:  (n.properties ?? []) as any,
+        properties:  n.properties ?? [],
         created_at:  n.createdAt,
         updated_at:  n.updatedAt,
         person_id:   n.personId   ?? null,
@@ -262,7 +326,7 @@ export function noteToDb(n: Note, userId: string) {
     }
 }
 
-export function noteFromDb(row: any): Note {
+export function noteFromDb(row: DbNote): Note {
     return {
         id:         row.id,
         title:      row.title,
@@ -293,7 +357,7 @@ export function personToDb(p: Person, userId: string) {
     }
 }
 
-export function personFromDb(row: any): Person {
+export function personFromDb(row: DbPerson): Person {
     return {
         id:     row.id,
         name:   row.name,
@@ -314,7 +378,7 @@ export function folderToDb(f: Folder, userId: string) {
     }
 }
 
-export function folderFromDb(row: any): Folder {
+export function folderFromDb(row: DbFolder): Folder {
     return {
         id:        row.id,
         name:      row.name,
@@ -334,7 +398,7 @@ export function objectTypeToDb(t: ObjectType, userId: string) {
     }
 }
 
-export function objectTypeFromDb(row: any): ObjectType {
+export function objectTypeFromDb(row: DbObjectType): ObjectType {
     return {
         id:        row.id,
         name:      row.name,
@@ -357,7 +421,7 @@ export function inboxItemToDb(i: InboxItem, userId: string) {
     }
 }
 
-export function inboxItemFromDb(row: any): InboxItem {
+export function inboxItemFromDb(row: DbInboxItem): InboxItem {
     return {
         id:        row.id,
         noteId:    row.note_id,
@@ -423,7 +487,13 @@ export async function dbSyncPeople(
 ): Promise<void> {
     const changed = people.filter(p => {
         const prev = prevPeople.find(pp => pp.id === p.id)
-        return !prev || JSON.stringify(prev) !== JSON.stringify(p)
+        return (
+            !prev ||
+            prev.name   !== p.name   ||
+            prev.emoji  !== p.emoji  ||
+            prev.noteId !== p.noteId ||
+            prev.typeId !== p.typeId
+        )
     })
     const removed = prevPeople.filter(pp => !people.some(p => p.id === pp.id))
     if (changed.length > 0) {
@@ -460,7 +530,12 @@ export async function dbSyncFolders(
 ): Promise<void> {
     const changed = folders.filter(f => {
         const prev = prevFolders.find(pf => pf.id === f.id)
-        return !prev || JSON.stringify(prev) !== JSON.stringify(f)
+        return (
+            !prev ||
+            prev.name     !== f.name     ||
+            prev.emoji    !== f.emoji    ||
+            prev.parentId !== f.parentId
+        )
     })
     const removed = prevFolders.filter(pf => !folders.some(f => f.id === pf.id))
     if (changed.length > 0) {
@@ -497,7 +572,12 @@ export async function dbSyncObjectTypes(
 ): Promise<void> {
     const changed = types.filter(t => {
         const prev = prevTypes.find(pt => pt.id === t.id)
-        return !prev || JSON.stringify(prev) !== JSON.stringify(t)
+        return (
+            !prev ||
+            prev.name      !== t.name      ||
+            prev.emoji     !== t.emoji     ||
+            prev.isBuiltin !== t.isBuiltin
+        )
     })
     const removed = prevTypes.filter(pt => !types.some(t => t.id === pt.id))
     if (changed.length > 0) {
@@ -523,7 +603,7 @@ export async function dbLoadDeletedObjectTypes(supabase: SupabaseClient, userId:
         .select('type_id')
         .eq('user_id', userId)
     if (error) throw error
-    return (data ?? []).map((row: any) => row.type_id)
+    return (data ?? []).map((row: Pick<DbDeletedObjectType, 'type_id'>) => row.type_id)
 }
 
 export async function dbSyncDeletedObjectTypes(
@@ -570,7 +650,14 @@ export async function dbSyncInbox(
 ): Promise<void> {
     const changed = items.filter(i => {
         const prev = prevItems.find(pi => pi.id === i.id)
-        return !prev || JSON.stringify(prev) !== JSON.stringify(i)
+        return (
+            !prev ||
+            prev.read      !== i.read      ||
+            prev.subject   !== i.subject   ||
+            prev.preview   !== i.preview   ||
+            prev.timestamp !== i.timestamp ||
+            prev.type      !== i.type
+        )
     })
     const removed = prevItems.filter(pi => !items.some(i => i.id === pi.id))
     if (changed.length > 0) {

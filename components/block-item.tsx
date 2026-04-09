@@ -9,6 +9,7 @@ import { DateBlock } from "./date-block"
 import { InlineDatePicker } from "./inline-date-picker"
 import { TableBlock } from "./table-block"
 import { injectMentionsIntoHtml, linkifyUrls, createInlineDateHtml, formatInlineDate } from "@/lib/mentions"
+import { sanitizeHtml } from "@/lib/sanitize"
 
 interface BlockItemProps {
     block: Block; index: number; listIndex: number; numBlocks: number; isFocused: boolean
@@ -988,7 +989,7 @@ export function BlockItem({ block, index, listIndex, numBlocks, isFocused, isSel
                         }
                         onFocus(block.id)
                     }}
-                    dangerouslySetInnerHTML={{ __html: block.content ? linkifyUrls(injectMentionsIntoHtml(block.content, people)) : '' }}
+                    dangerouslySetInnerHTML={{ __html: block.content ? sanitizeHtml(linkifyUrls(injectMentionsIntoHtml(block.content, people))) : '' }}
                 />
             )}
         </div>
@@ -1096,7 +1097,7 @@ export function BlockItem({ block, index, listIndex, numBlocks, isFocused, isSel
                                         }
                                         onFocus(block.id)
                                     }}
-                                    dangerouslySetInnerHTML={{ __html: block.content ? injectMentionsIntoHtml(block.content, people) : '' }}
+                                    dangerouslySetInnerHTML={{ __html: block.content ? sanitizeHtml(injectMentionsIntoHtml(block.content, people)) : '' }}
                                 />
                             )}
                         </div>
@@ -1162,7 +1163,7 @@ export function BlockItem({ block, index, listIndex, numBlocks, isFocused, isSel
                                             }
                                             onFocus(block.id)
                                         }}
-                                        dangerouslySetInnerHTML={{ __html: block.expandedContent ? injectMentionsIntoHtml(block.expandedContent, people) : '' }}
+                                        dangerouslySetInnerHTML={{ __html: block.expandedContent ? sanitizeHtml(injectMentionsIntoHtml(block.expandedContent, people)) : '' }}
                                     />
                                 )}
                             </div>

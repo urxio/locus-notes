@@ -40,6 +40,7 @@ import {
   dbLoadInbox, dbSyncInbox,
 } from "@/lib/storage"
 import { getSupabaseClient } from "@/lib/supabase"
+import type { User as SupabaseUser } from "@supabase/supabase-js"
 import { migrateIfNeeded } from "@/lib/migrate"
 import { buildGraph, tickSim } from "@/lib/graph"
 import { NoteIcon } from "@/components/note-icon"
@@ -99,9 +100,9 @@ export default function NotesPage() {
   // Stable ref to the Supabase browser client (doesn't change between renders)
   const supabase = useRef(getSupabaseClient())
   // Current authenticated user (null = not signed in or auth not yet loaded)
-  const [user, setUser] = useState<any>(null)
+  const [user, setUser] = useState<SupabaseUser | null>(null)
   // Mirror user in a ref so auto-save effects can read it without re-running
-  const userRef = useRef<any>(null)
+  const userRef = useRef<SupabaseUser | null>(null)
   useEffect(() => { userRef.current = user }, [user])
 
   // ─── Core state ─────────────────────────────────────────────────────────────
@@ -157,6 +158,10 @@ export default function NotesPage() {
   const prevObjTypesRef     = useRef<ObjectType[]>([])
   const prevDelTypesRef     = useRef<string[]>([])
   const prevInboxRef        = useRef<InboxItem[]>([])
+
+  // Debounce timer for Supabase note upserts — localStorage is written instantly;
+  // the cloud sync is batched to avoid a network round-trip on every keystroke.
+  const notesSyncTimerRef   = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   // ─── Bootstrap — async to support Supabase loading ──────────────────────────
   useEffect(() => {
@@ -304,7 +309,9 @@ export default function NotesPage() {
   // If the user is authenticated, changed/new/removed records are also synced
   // to Supabase in the background (fire-and-forget via .catch(console.warn)).
 
-  // Notes — diff by updatedAt / trashedAt / lastViewed change or new id
+  // Notes — diff by updatedAt / trashedAt / lastViewed change or new id.
+  // localStorage is written synchronously on every change; Supabase upserts are
+  // debounced by 2.5 s to avoid a network round-trip on every keystroke.
   useEffect(() => {
     if (!mounted) return
     saveNotes(notes)
@@ -312,7 +319,7 @@ export default function NotesPage() {
     const sb = supabase.current
     if (!u) { prevNotesRef.current = notes; return }
 
-    const changed = notes.filter(n => {
+    const snapshotChanged = notes.filter(n => {
       const prev = prevNotesRef.current.find(p => p.id === n.id)
       return (
         !prev ||
@@ -321,12 +328,18 @@ export default function NotesPage() {
         prev.lastViewed !== n.lastViewed
       )
     })
-    const removed = prevNotesRef.current.filter(p => !notes.some(n => n.id === p.id))
-
-    if (changed.length > 0) changed.forEach(n => dbUpsertNote(sb, n, u.id).catch(console.warn))
-    if (removed.length > 0) removed.forEach(n => dbDeleteNote(sb, n.id, u.id).catch(console.warn))
-
+    const snapshotRemoved = prevNotesRef.current.filter(p => !notes.some(n => n.id === p.id))
     prevNotesRef.current = notes
+
+    if (snapshotChanged.length === 0 && snapshotRemoved.length === 0) return
+
+    // Debounce: clear any pending sync and reschedule
+    if (notesSyncTimerRef.current !== null) clearTimeout(notesSyncTimerRef.current)
+    notesSyncTimerRef.current = setTimeout(() => {
+      notesSyncTimerRef.current = null
+      snapshotChanged.forEach(n => dbUpsertNote(sb, n, u.id).catch(console.warn))
+      snapshotRemoved.forEach(n => dbDeleteNote(sb, n.id, u.id).catch(console.warn))
+    }, 2500)
   }, [notes, mounted])
 
   // People
@@ -910,6 +923,33 @@ export default function NotesPage() {
     return (
       <div className="flex h-screen items-center justify-center">
         <div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+      </div>
+    )
+  }
+
+  // ── Show skeleton while bootstrap is loading (avoids flash of empty state) ─
+  if (!mounted) {
+    return (
+      <div className="flex h-screen overflow-hidden p-3 gap-3" style={{ background: LIGHT_BG }}>
+        {/* Sidebar skeleton */}
+        <div className="w-12 shrink-0 rounded-xl bg-white/30 dark:bg-zinc-900/30 animate-pulse" />
+        {/* Note list skeleton */}
+        <div className="w-64 shrink-0 flex flex-col gap-3 rounded-xl bg-white/30 dark:bg-zinc-900/30 p-4 animate-pulse">
+          <div className="h-4 w-3/4 rounded bg-zinc-200 dark:bg-zinc-700" />
+          <div className="h-4 w-1/2 rounded bg-zinc-200 dark:bg-zinc-700" />
+          <div className="h-4 w-2/3 rounded bg-zinc-200 dark:bg-zinc-700" />
+          <div className="h-4 w-1/3 rounded bg-zinc-200 dark:bg-zinc-700" />
+          <div className="h-4 w-3/5 rounded bg-zinc-200 dark:bg-zinc-700" />
+        </div>
+        {/* Editor skeleton */}
+        <div className="flex-1 flex flex-col gap-4 rounded-xl bg-white/30 dark:bg-zinc-900/30 p-6 animate-pulse">
+          <div className="h-6 w-1/3 rounded bg-zinc-200 dark:bg-zinc-700" />
+          <div className="h-4 w-full rounded bg-zinc-200 dark:bg-zinc-700" />
+          <div className="h-4 w-4/5 rounded bg-zinc-200 dark:bg-zinc-700" />
+          <div className="h-4 w-3/4 rounded bg-zinc-200 dark:bg-zinc-700" />
+          <div className="h-4 w-full rounded bg-zinc-200 dark:bg-zinc-700" />
+          <div className="h-4 w-2/3 rounded bg-zinc-200 dark:bg-zinc-700" />
+        </div>
       </div>
     )
   }

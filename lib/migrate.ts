@@ -47,19 +47,22 @@ export async function migrateIfNeeded(
         const inbox         = loadInbox()
 
         // Build the ops array without boolean short-circuits so we can inspect errors properly
-        const ops: Promise<{ error: any } | null>[] = [
-            supabase.from('notes').upsert(notes.map(n => noteToDb(n, userId)), { onConflict: 'id' }) as any,
+        // Supabase's PostgrestFilterBuilder doesn't expose a direct promise type, so we cast
+        // each upsert call to Promise<{ error: unknown }> which is all we care about here.
+        type UpsertOp = Promise<{ error: unknown }>
+        const ops: UpsertOp[] = [
+            supabase.from('notes').upsert(notes.map(n => noteToDb(n, userId)), { onConflict: 'id' }) as unknown as UpsertOp,
         ]
         if (people.length > 0)
-            ops.push(supabase.from('people').upsert(people.map(p => personToDb(p, userId)), { onConflict: 'id' }) as any)
+            ops.push(supabase.from('people').upsert(people.map(p => personToDb(p, userId)), { onConflict: 'id' }) as unknown as UpsertOp)
         if (folders.length > 0)
-            ops.push(supabase.from('folders').upsert(folders.map(f => folderToDb(f, userId)), { onConflict: 'id' }) as any)
+            ops.push(supabase.from('folders').upsert(folders.map(f => folderToDb(f, userId)), { onConflict: 'id' }) as unknown as UpsertOp)
         if (objectTypes.length > 0)
-            ops.push(supabase.from('object_types').upsert(objectTypes.map(t => objectTypeToDb(t, userId)), { onConflict: 'id' }) as any)
+            ops.push(supabase.from('object_types').upsert(objectTypes.map(t => objectTypeToDb(t, userId)), { onConflict: 'id' }) as unknown as UpsertOp)
         if (deletedTypes.length > 0)
-            ops.push(supabase.from('deleted_object_types').upsert(deletedTypes.map(typeId => ({ user_id: userId, type_id: typeId }))) as any)
+            ops.push(supabase.from('deleted_object_types').upsert(deletedTypes.map(typeId => ({ user_id: userId, type_id: typeId }))) as unknown as UpsertOp)
         if (inbox.length > 0)
-            ops.push(supabase.from('inbox').upsert(inbox.map(i => inboxItemToDb(i, userId)), { onConflict: 'id' }) as any)
+            ops.push(supabase.from('inbox').upsert(inbox.map(i => inboxItemToDb(i, userId)), { onConflict: 'id' }) as unknown as UpsertOp)
 
         // Run in parallel; use allSettled so a single failure doesn't abort everything
         const results = await Promise.allSettled(ops)
@@ -67,7 +70,7 @@ export async function migrateIfNeeded(
         // Only mark as done if no upsert returned an error — allows retry on next boot if something failed
         const hasError = results.some(r =>
             r.status === 'rejected' ||
-            (r.status === 'fulfilled' && r.value && (r.value as any).error)
+            (r.status === 'fulfilled' && r.value && (r.value as { error: unknown }).error)
         )
         if (hasError) {
             console.warn('[locus] Migration had errors — will retry on next boot')

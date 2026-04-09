@@ -186,7 +186,7 @@ export default function AuthPage() {
                     <button
                         type="button"
                         onClick={() => {
-                            document.cookie = 'locus-local-mode=1; path=/; max-age=31536000; SameSite=Lax'
+                            document.cookie = 'locus-local-mode=1; path=/; max-age=31536000; SameSite=Lax; Secure'
                             window.location.href = '/app'
                         }}
                         className="w-full py-2.5 rounded-xl border border-white/[0.08] hover:border-white/[0.16] text-zinc-500 hover:text-zinc-300 text-sm transition-all flex items-center justify-center gap-2"
